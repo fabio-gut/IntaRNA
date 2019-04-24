@@ -1,3 +1,5 @@
+
+
 # Compiled Object files
 *.slo
 *.lo
@@ -69,3 +71,7 @@ tests/logs/*
 /t.fasta
 /t2.fasta
 /IntaRNA.pc
+
+# pvalue python venv
+/python/venv/
+/python/venv/*
