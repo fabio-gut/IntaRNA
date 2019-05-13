@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 # Copyright 2019
 # Author: Fabio Gutmann <fabio.gutmann@jupiter.uni-freiburg.de>
 
@@ -26,5 +28,5 @@ if __name__ == '__main__':
         print('Error: Cannot find IntaRNA binary executable')
         os._exit(1)
 
-    test = os.system('IntaRNA -q {0} -t {1}'.format(query, target))
+    test = os.system('{0} -q {1} -t {2}'.format(intarna_bin, query, target))
 
