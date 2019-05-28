@@ -154,7 +154,6 @@ def dinucl_shuffle(s):
         del nucl_dict[prev_ch][0]
         prev_ch = ch
     l.append(s[-1])
-    print(l)
     t = ''.join(l)
     return t
  
