@@ -69,7 +69,7 @@ class IntaRNApvalue:
     def shuffle_sequence(query: str, target: str, n: int, shuffle_query: bool, shuffle_target: bool) -> list:
         """Shuffles a query/target pair n times and returns an array of sequence tuples, by default both are shuffled.
             The returned array always has length n+1, duplicate entries are possible"""
-        shuffles = [(query, target)]  # add original seq
+        shuffles = [(query, target)]  # TODO: add original seq???
         for _ in range(n):
             shuffles.append((din_s(query) if shuffle_query else query, din_s(target) if shuffle_target else target))
         return shuffles
@@ -82,9 +82,9 @@ class IntaRNApvalue:
         shuffle_start = time.time()
         scores = self.get_scores(shuffles)
 
-        total = time.strftime("%H:%M:%S", time.gmtime(time.time() - start))
-        shuffle = time.strftime("%H:%M:%S", time.gmtime(shuffle_start - start))
-        calculate = time.strftime("%H:%M:%S", time.gmtime(time.time() - shuffle_start))
+        total = time.strftime("%H:%M:%S.%f", time.gmtime(time.time() - start))
+        shuffle = time.strftime("%H:%M:%S.%f", time.gmtime(shuffle_start - start))
+        calculate = time.strftime("%H:%M:%S.%f", time.gmtime(time.time() - shuffle_start))
         print('This run took {} ({} to shuffle and {} to calculate scores)'.format(
             total, shuffle, calculate
         ))
@@ -92,8 +92,6 @@ class IntaRNApvalue:
         return [score <= original_score for score in scores].count(True) / len(scores)
 
     def get_pvalue_graph(self, query: str, target: str, max_exp: int = 4):
-        # fig = plt.figure()
-        # ax = fig.gca()
         for n in range(1, max_exp):
             plt.plot(10**n, self.calculate_pvalue(query, target, 10**n, True, False), 'rx')
             plt.plot(10**n, self.calculate_pvalue(query, target, 10**n, False, True), 'bx')
