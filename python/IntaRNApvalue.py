@@ -9,6 +9,8 @@ import argparse
 import subprocess
 from subprocess import PIPE
 from DinuclShuffle import dinucl_shuffle as din_s
+import time
+from matplotlib import pyplot as plt
 
 
 class IntaRNApvalue:
@@ -26,7 +28,7 @@ class IntaRNApvalue:
                 if 'IntaRNA' in file_names:
                     return os.path.join(dir_path, 'IntaRNA')
         else:
-            print('Error: Cannot find IntaRNA binary executable')
+            print('Error: Cannot find IntaRNA binary executable, please add it to your PATH')
             sys.exit(1)
 
     def process_cmd_args(self):
@@ -74,11 +76,32 @@ class IntaRNApvalue:
 
     def calculate_pvalue(self, query: str, target: str, n: int, shuffle_query: bool, shuffle_target: bool) -> float:
         """Calculates a p-value to a target/query combination with a given amount of shuffle iterations"""
+        start = time.time()
         original_score = self.get_score(query, target)
         shuffles = self.shuffle_sequence(query, target, n, shuffle_query, shuffle_target)
+        shuffle_start = time.time()
         scores = self.get_scores(shuffles)
+
+        total = time.strftime("%H:%M:%S", time.gmtime(time.time() - start))
+        shuffle = time.strftime("%H:%M:%S", time.gmtime(shuffle_start - start))
+        calculate = time.strftime("%H:%M:%S", time.gmtime(time.time() - shuffle_start))
+        print('This run took {} ({} to shuffle and {} to calculate scores)'.format(
+            total, shuffle, calculate
+        ))
         # Do it empirical for now, TODO: fit curve
         return [score <= original_score for score in scores].count(True) / len(scores)
+
+    def get_pvalue_graph(self, query: str, target: str, max_exp: int = 4):
+        # fig = plt.figure()
+        # ax = fig.gca()
+        for n in range(1, max_exp):
+            plt.plot(10**n, self.calculate_pvalue(query, target, 10**n, True, False), 'rx')
+            plt.plot(10**n, self.calculate_pvalue(query, target, 10**n, False, True), 'bx')
+            plt.plot(10**n, self.calculate_pvalue(query, target, 10**n, True, True), 'gx')
+        plt.title('p-values for different shuffle types and shuffle amount')
+        plt.xlabel('# of shuffles')
+        plt.ylabel('p-value')
+        plt.show()
 
 
 if __name__ == '__main__':
@@ -88,7 +111,4 @@ if __name__ == '__main__':
 
     i = IntaRNApvalue()
     # i.process_cmd_args()
-    print(i.calculate_pvalue(q, t, 10, True, True))
-    print(i.calculate_pvalue(q, t, 100, True, True))
-    print(i.calculate_pvalue(q, t, 1000, True, True))
-    print(i.calculate_pvalue(q, t, 10000, True, True))
+    i.get_pvalue_graph(q, t, 4)
