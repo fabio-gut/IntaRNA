@@ -8,6 +8,7 @@ import sys
 import argparse
 import subprocess
 from subprocess import PIPE
+from DinuclShuffle import dinucl_shuffle as din_s
 
 
 class IntaRNApvalue:
@@ -31,38 +32,63 @@ class IntaRNApvalue:
     def process_cmd_args(self):
         """Processes all commandline args"""
         parser = argparse.ArgumentParser(description='Calculates p-values to IntaRNA scores')
-        parser.add_argument(['--query', '-q'], type=str, required=True, help='Query sequence')
-        parser.add_argument(['--target', '-t'], type=str, required=True, help='Target sequence')
-        parser.add_argument(['--query-shuffles', '-qn'], type=int, default=10000, dest='qn',
+        parser.add_argument('--query', type=str, required=True, help='Query sequence')
+        parser.add_argument('--target', type=str, required=True, help='Target sequence')
+        parser.add_argument('--amount', type=int, required=True, help='How often he sequences are shuffled')
+        parser.add_argument('--shuffle-query', type=bool, default=True, dest='sq',
                             help='Amount of shuffles to the query sequence')
-        parser.add_argument(['--target-shuffles', '-tn'], type=int, default=10000, dest='tn',
+        parser.add_argument('--shuffle-target', type=int, default=True, dest='st',
                             help='Amount of shuffles to the target sequence')
         args = parser.parse_args()
-        self.calculate_pvalue(query=args.query, target=args.target, query_n=args.qn, target_n=args.tn)
+        self.calculate_pvalue(args.query, args.target, args.amount, args.sq, args.st)
 
     def get_score(self, query: str, target: str) -> float:
-        """Gets the IntaRNA score of a given target/query combination"""
-        res = subprocess.run([self.bin, '-q{}'.format(query), '-t{}'.format(target)], stdout=PIPE, stderr=PIPE)
-        if res.returncode:  # if process ended with errcode != 0
-            print(res.stdout.decode('utf-8'))
-            sys.exit(res.returncode)
-        return float(res.stdout.decode('utf-8').split('interaction energy = ')[1].split(' kcal/mol\n')[0])
+        """Gets the IntaRNA score of a single target/query combination"""
+        res = os.popen('{} -q {} -t {}'.format(self.bin, query, target)).read()
+        # res = subprocess.run([self.bin, '-q{}'.format(query), '-t{}'.format(target)], stdout=PIPE, stderr=PIPE)
+        # TODO: For some reason both subprocess.run() and os.popen() are both slow on my system
+        # stdout = res.stdout.decode('utf-8')
+        # if res.returncode:  # if process ended with errcode != 0
+        #     print(res.stderr.decode('utf-8'))
+        #     sys.exit(res.returncode)  # exit with same error code
+        if 'no favorable interaction for target and query' in res:
+            return 0.0  # TODO: What do with query/target combinations that don't interact?
+        return float(res.split('interaction energy = ')[1].split(' kcal/mol\n')[0])
 
-    def shuffle_sequence(self, sequence: str, n: int) -> list:
-        """Shuffles a sequence n times and returns an array of sequences
-        TODO: remove duplicates?"""
-        pass
+    def get_scores(self, seq_list: list) -> list:
+        """Gets the IntaRNA score to a given list of query/target tuples, returns a sorted list of scores"""
+        scores = []
+        for query, target in seq_list:
+            scores.append(self.get_score(query=query, target=target))
+        scores.sort()  # Timsort is O(n log n) on average and worst, O(n) on best case
+        return scores
 
-    def calculate_pvalue(self, query: str, target: str, query_n: int, target_n: int) -> float:
+    @staticmethod
+    def shuffle_sequence(query: str, target: str, n: int, shuffle_query: bool, shuffle_target: bool) -> list:
+        """Shuffles a query/target pair n times and returns an array of sequence tuples, by default both are shuffled.
+            The returned array always has length n+1, duplicate entries are possible"""
+        shuffles = [(query, target)]  # add original seq
+        for _ in range(n):
+            shuffles.append((din_s(query) if shuffle_query else query, din_s(target) if shuffle_target else target))
+        return shuffles
+
+    def calculate_pvalue(self, query: str, target: str, n: int, shuffle_query: bool, shuffle_target: bool) -> float:
         """Calculates a p-value to a target/query combination with a given amount of shuffle iterations"""
-        pass
+        original_score = self.get_score(query, target)
+        shuffles = self.shuffle_sequence(query, target, n, shuffle_query, shuffle_target)
+        scores = self.get_scores(shuffles)
+        # Do it empirical for now, TODO: fit curve
+        return [score <= original_score for score in scores].count(True) / len(scores)
 
 
 if __name__ == '__main__':
-    query = 'AGGAUGGGGGAAACCCCAUACUCCUCACACACCAAAUCGCCCGAUUUAUCGGGCUUUUUU'
-    target = 'UUUAAAUUAAAAAAUCAUAGAAAAAGUAUCGUUUGAUACUUGUGAUUAUACUCAGUUAUACAGUAUCUUAAGGUGUUAUUAAUAGUGGUG' \
-             'AGGAGAAUUUAUGAAGCUUUUCAAAAGCUUGCUUGUGGCACCUGCAACUCUUGGUCUUUUAGCACCAAUGACCGCUACUGCUAAU'
+    q = 'AGGAUGGGGGAAACCCCAUACUCCUCACACACCAAAUCGCCCGAUUUAUCGGGCUUUUUU'
+    t = 'UUUAAAUUAAAAAAUCAUAGAAAAAGUAUCGUUUGAUACUUGUGAUUAUACUCAGUUAUACAGUAUCUUAAGGUGUUAUUAAUAGUGGUG' \
+        'AGGAGAAUUUAUGAAGCUUUUCAAAAGCUUGCUUGUGGCACCUGCAACUCUUGGUCUUUUAGCACCAAUGACCGCUACUGCUAAU'
 
     i = IntaRNApvalue()
-    i.process_cmd_args()
-    # print(i.get_score(query=query, target=target))
+    # i.process_cmd_args()
+    print(i.calculate_pvalue(q, t, 10, True, True))
+    print(i.calculate_pvalue(q, t, 100, True, True))
+    print(i.calculate_pvalue(q, t, 1000, True, True))
+    print(i.calculate_pvalue(q, t, 10000, True, True))
