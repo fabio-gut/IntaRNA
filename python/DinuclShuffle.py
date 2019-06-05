@@ -138,11 +138,11 @@ def dinucl_shuffle(s):
 
     # remove last edges from each vertex list, shuffle, then add back
     # the removed edges at end of vertex lists.
-    for [x, y] in edge_list:
+    for x, y in edge_list:
         nucl_dict[x].remove(y)
     for x in nucl_list:
         shuffle_edge_list(nucl_dict[x])
-    for [x, y] in edge_list:
+    for x, y in edge_list:
         nucl_dict[x].append(y)
 
     # construct the eulerian path
