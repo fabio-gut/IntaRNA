@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 # DinuclShuffle.py
-# P. Clote, Oct 2003
+# Original code by P. Clote, Oct 2003
+# Modified for python3 by Fabio Gutmann <fabio.gutmann@jupiter.uni-freiburg.de>, 2019
 # NOTE: One cannot use function "count(s,word)" to count the number
 # of occurrences of dinucleotide word in string s, since the built-in
 # function counts only non-overlapping words, presumably in a left to
