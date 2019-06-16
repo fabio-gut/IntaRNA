@@ -160,8 +160,9 @@ class IntaRNApvalue:
             scores, non_interactions = self.get_scores()
         return [score <= self.original_score for score in scores].count(True) / len(scores)
 
-    def calculate_pvalue_gauss(self, scores: list = None) -> any:
-        """Calculates a p-value to a target/query combination by int. with a given amount of shuffle iterations
+    def calculate_pvalue_gauss(self, scores: list = None) -> float:
+        """Calculates a p-value to a target/query combination by int. with a given amount of shuffle iterations by
+        fitting a gaussian distribution and integration
 
         >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--amount', '10', '-sm', 'b', '--threads', '3'])
         >>> i.original_score = -10.0
@@ -179,6 +180,14 @@ class IntaRNApvalue:
         def gauss(x):
             return 1.0 / np.sqrt(2 * np.pi * var) * np.exp(-0.5 * ((x - avg) ** 2 / var))
         return integ(gauss, -np.inf, self.original_score)[0]
+
+    def calculate_pvalue_gumbel(self, scores: list = None):
+        """Calculates a p-value to a target/query combination by int. with a given amount of shuffle iterations by
+        fitting a gumbel distribution and integration"""
+        if not scores:
+            scores, non_interactions = self.get_scores()
+
+        # TODO
 
 
 if __name__ == '__main__':
