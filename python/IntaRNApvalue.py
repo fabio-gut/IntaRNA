@@ -8,7 +8,7 @@ import random
 import os
 import sys
 import argparse
-from typing import List
+from typing import List, Tuple
 import time
 import numpy as np
 from scipy.integrate import quad as integ
@@ -105,7 +105,7 @@ class IntaRNApvalue:
             n += 1
         return fasta_str
 
-    def get_scores(self) -> List[float]:
+    def get_scores(self) -> Tuple[List[float], int]:
         """Calculates n IntaRNA scores from random sequences with given parameters as class variables
 
         # >>> i = IntaRNApvalue()
@@ -114,37 +114,33 @@ class IntaRNApvalue:
         """
         scores = []
         missing = self.n
-        if self.shuffle_query and self.shuffle_target:  # if both shuffled
-            while missing > 0:
-                shuffles_needed = int(np.ceil(np.sqrt(missing)))
-                query_shuffles = self.shuffle_sequence(self.query, shuffles_needed)
-                target_shuffles = self.to_fasta(self.shuffle_sequence(self.query, shuffles_needed)).encode('utf-8')
+        non_interactions = 0
 
-                for query in query_shuffles:
-                    p = Popen([self.bin, '-q', query, '-t', 'STDIN', '--outMode=C', '--outCsvCols=E',
-                               '--threads', self.threads], stdout=PIPE, stdin=PIPE)
-                    stdout, stderr = p.communicate(input=target_shuffles)  # send shuffles as STDIN
-                    stdout = stdout.decode().split('\n')
-                    del stdout[0], stdout[-1]  # remove first element aka 'E' and trailing newline element
-                    scores.extend(stdout)  # add elements to scores
-                    missing = self.n - len(scores)
-        else:
-            while missing > 0:
-                if self.shuffle_query:
-                    shuffles = self.to_fasta(self.shuffle_sequence(self.query, missing)).encode('utf-8')
-                    p = Popen([self.bin, '-q', 'STDIN', '-t', self.target, '--outMode=C', '--outCsvCols=E',
-                               '--threads', self.threads], stdout=PIPE, stdin=PIPE)
-                else:
-                    shuffles = self.to_fasta(self.shuffle_sequence(self.target, missing)).encode('utf-8')
-                    p = Popen([self.bin, '-q', self.query, '-t', 'STDIN', '--outMode=C', '--outCsvCols=E',
-                               '--threads', self.threads], stdout=PIPE, stdin=PIPE)
-                stdout, stderr = p.communicate(input=shuffles)  # send shuffles as STDIN
-                stdout = stdout.decode().split('\n')
-                del stdout[0], stdout[-1]  # remove first element aka 'E' and trailing newline element
-                scores.extend(stdout)  # add elements to scores
-                missing = self.n - len(scores)
-        del scores[self.n-1:-1]  # delete unwanted scores so we have exact amount
-        return [float(x) for x in scores]  # return a new lists with all elements as float
+        while missing > 0:
+            if self.shuffle_query and self.shuffle_target:  # shuffle both
+                query = self.shuffle_sequence(self.query, 1)[0]  # get a random query
+                target = 'STDIN'
+                shuffles = self.to_fasta(self.shuffle_sequence(self.query, missing)).encode('utf-8')
+            elif self.shuffle_query and not self.shuffle_target:  # only shuffle query
+                query = 'STDIN'
+                target = self.target  # target stays the same
+                shuffles = self.to_fasta(self.shuffle_sequence(self.query, missing)).encode('utf-8')
+            else:  # only shuffle target
+                query = self.query  # query stays the same
+                target = 'STDIN'
+                shuffles = self.to_fasta(self.shuffle_sequence(self.target, missing)).encode('utf-8')
+
+            p = Popen([self.bin, '-q', query, '-t', target, '--outMode=C', '--outCsvCols=E', '--threads', self.threads],
+                      stdout=PIPE, stdin=PIPE)
+            stdout, stderr = p.communicate(input=shuffles)  # send shuffles as STDIN
+            stdout = stdout.decode().split('\n')  # convert bytes -> str and split on newline
+            del stdout[0], stdout[-1]  # remove first element aka 'E' and trailing newline element
+            scores.extend(stdout)  # add elements to scores
+            missing = self.n - len(scores)
+            non_interactions += missing  # count non-interactions
+
+        # return list with all elements as float and amount of non-interactions
+        return [float(x) for x in scores], non_interactions
 
     def get_single_score(self, query: str, target: str) -> float:
         """Gets an IntaRNA score to a single query/target combination"""
@@ -157,17 +153,17 @@ class IntaRNApvalue:
 
     def calculate_pvalue_empirical(self) -> float:
         """Calculates a p-value to a target/query combination empirical with a given amount of shuffle iterations"""
-        scores = self.get_scores()
+        scores = self.get_scores()[0]
         return [score <= self.original_score for score in scores].count(True) / len(scores)
 
     def calculate_pvalue(self) -> any:
         """Calculates a p-value to a target/query combination by int. with a given amount of shuffle iterations"""
-        scores = self.get_scores()
+        scores = self.get_scores()[0]
 
         # Try to fit a gaussian distribution
         avg = np.mean(scores)  # average
         var = np.var(scores)  # variance
-        std_dev = np.sqrt(var)  # standard deviation
+        # std_dev = np.sqrt(var)  # standard deviation
 
         def gauss(x):
             return 1.0 / np.sqrt(2 * np.pi * var) * np.exp(-0.5 * ((x - avg) ** 2 / var))
@@ -178,8 +174,10 @@ if __name__ == '__main__':
     i = IntaRNApvalue()
 
     start = time.time()
-    print(i.calculate_pvalue())
-    print(i.calculate_pvalue_empirical())
+    scores = i.get_scores()
+    print('We have {} scores and {} non-interactions'.format(len(scores[0]), scores[1]))
+    # print(i.calculate_pvalue())
+    # print(i.calculate_pvalue_empirical())
     print('This run took: {}'.format(time.time() - start))
     # print(i.calculate_pvalue())
     # i.get_dist_function(q, t, 1000, True, True)
