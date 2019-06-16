@@ -116,20 +116,20 @@ class IntaRNApvalue:
             if self.shuffle_query and self.shuffle_target:  # shuffle both
                 query = self.shuffle_sequence(self.query, 1)[0]  # get a random query
                 target = 'STDIN'
-                shuffles = self.to_fasta(self.shuffle_sequence(self.query, missing)).encode('utf-8')
+                shuffles = self.to_fasta(self.shuffle_sequence(self.query, missing))
             elif self.shuffle_query and not self.shuffle_target:  # only shuffle query
                 query = 'STDIN'
                 target = self.target  # target stays the same
-                shuffles = self.to_fasta(self.shuffle_sequence(self.query, missing)).encode('utf-8')
+                shuffles = self.to_fasta(self.shuffle_sequence(self.query, missing))
             else:  # only shuffle target
                 query = self.query  # query stays the same
                 target = 'STDIN'
-                shuffles = self.to_fasta(self.shuffle_sequence(self.target, missing)).encode('utf-8')
+                shuffles = self.to_fasta(self.shuffle_sequence(self.target, missing))
 
             p = Popen([self.bin, '-q', query, '-t', target, '--outMode=C', '--outCsvCols=E', '--threads', self.threads],
-                      stdout=PIPE, stdin=PIPE)
+                      stdout=PIPE, stdin=PIPE, universal_newlines=True)
             stdout, stderr = p.communicate(input=shuffles)  # send shuffles as STDIN
-            stdout = stdout.decode().split('\n')  # convert bytes -> str and split on newline
+            stdout = stdout.split('\n')  # split on newline
             del stdout[0], stdout[-1]  # remove first element aka 'E' and trailing newline element
             scores.extend(stdout)  # add elements to scores
             missing = self.n - len(scores)
