@@ -157,19 +157,19 @@ class IntaRNApvalue:
         0.25
         """
         if not scores:
-            scores = self.get_scores()[0]
+            scores, non_interactions = i.get_scores()
         return [score <= self.original_score for score in scores].count(True) / len(scores)
 
-    def calculate_pvalue(self, scores: list = None) -> any:
+    def calculate_pvalue_gauss(self, scores: list = None) -> any:
         """Calculates a p-value to a target/query combination by int. with a given amount of shuffle iterations
 
         >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--amount', '10', '--shuffle', 'b', '--threads', '3'])
         >>> i.original_score = -10.0
-        >>> i.calculate_pvalue([-1.235, -1.435645, -6.234234, -12.999, -15.23, -6.98, -6.23, -2.78])
+        >>> i.calculate_pvalue_gauss([-1.235, -1.435645, -6.234234, -12.999, -15.23, -6.98, -6.23, -2.78])
         0.2429106747265256
         """
         if not scores:
-            scores = self.get_scores()[0]
+            scores, non_interactions = i.get_scores()
 
         # Try to fit a gaussian distribution
         avg = np.mean(scores)  # average
@@ -185,6 +185,6 @@ if __name__ == '__main__':
     i = IntaRNApvalue()
 
     start = time.time()
-    print('Integriert: {}'.format(i.calculate_pvalue()))
+    print('Integriert: {}'.format(i.calculate_pvalue_gauss()))
     print('Empirisch:  {}'.format(i.calculate_pvalue_empirical()))
     print('Dauer: {} s'.format(time.time() - start))
