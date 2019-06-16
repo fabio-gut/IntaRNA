@@ -16,7 +16,7 @@ from DinuclShuffle import dinucl_shuffle as din_s
 
 
 class IntaRNApvalue:
-    def __init__(self, args=None):
+    def __init__(self, test_args=None):
         self.bin = self.find_binary()
         self.query = ''
         self.target = ''
@@ -24,9 +24,9 @@ class IntaRNApvalue:
         self.shuffle_query = False
         self.shuffle_target = False
         self.threads = ''
-        self.process_cmd_args(args)
-        self.original_score = self.get_single_score(self.query, self.target)  # TODO: leave this here?
-        if not self.original_score:
+        self.process_cmd_args(test_args)
+        self.original_score = self.get_original_score()
+        if not self.original_score and not test_args:  # exit if given seq has no interaction and not test mode
             print('The query/target combination you specified has no favorable interaction')
             sys.exit(1)
 
@@ -48,12 +48,11 @@ class IntaRNApvalue:
     def process_cmd_args(self, test_args=None) -> None:
         """Processes all commandline args
 
-        >>> i = IntaRNApvalue(['-q', 'AGGAUGGGGGAAACCCCAUACUCCUCACACACCAAAUCGCCCGAUUUAUCGGGCUUUUUU',
-        ... '-t', 'UUUAAAUUAAAAAAUCAUAGAAAAAGUAUCGUUU', '--amount', '10', '--shuffle', 'b', '--threads', '3'])
+        >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--amount', '10', '--shuffle', 'b', '--threads', '3'])
         >>> i.query
-        'AGGAUGGGGGAAACCCCAUACUCCUCACACACCAAAUCGCCCGAUUUAUCGGGCUUUUUU'
+        'AGGAUG'
         >>> i.target
-        'UUUAAAUUAAAAAAUCAUAGAAAAAGUAUCGUUU'
+        'UUUAUCGUU'
         >>> i.n
         10
         >>> i.shuffle_query
@@ -75,6 +74,8 @@ class IntaRNApvalue:
                             help='Random seed to make sequence generation deterministic')
 
         args = parser.parse_args(test_args)
+        # TODO: check if query/target only contain allowed nucleotides?
+
         shuffle_query = True if args.shuffle in ['b', 'q'] else False
         shuffle_target = True if args.shuffle in ['b', 't'] else False
         self.query, self.target, self.n = args.query, args.target, args.amount
@@ -106,12 +107,7 @@ class IntaRNApvalue:
         return fasta_str
 
     def get_scores(self) -> Tuple[List[float], int]:
-        """Calculates n IntaRNA scores from random sequences with given parameters as class variables
-
-        # >>> i = IntaRNApvalue()
-        # >>> i.n, i.query, i.target, i.shuffle_query, i.shuffle_target, i.threads = 13, 'ACG', 'GGAU', True, True, '0'
-        # >>> i.get_single_score(i.query, i.target)
-        """
+        """Calculates n IntaRNA scores from random sequences with given parameters as class variables"""
         scores = []
         missing = self.n
         non_interactions = 0
@@ -142,23 +138,38 @@ class IntaRNApvalue:
         # return list with all elements as float and amount of non-interactions
         return [float(x) for x in scores], non_interactions
 
-    def get_single_score(self, query: str, target: str) -> float:
+    def get_original_score(self) -> float:
         """Gets an IntaRNA score to a single query/target combination"""
-        o = run('{} -q {} -t {} --outMode=C --outCsvCols=E --threads {}'.format(self.bin, query, target, self.threads),
+        o = run('{} -q {} -t {} --outMode=C --outCsvCols=E --threads {}'.format(self.bin, self.query, self.target,
+                                                                                self.threads),
                 stdout=PIPE, stdin=PIPE, shell=True).stdout.decode()
-        if o.startswith('E'):
+        if o.startswith('E') and o != 'E\n':
             return float(o.split('\n')[1])
         else:
-            return 0
+            return 0  # no interaction
 
-    def calculate_pvalue_empirical(self) -> float:
-        """Calculates a p-value to a target/query combination empirical with a given amount of shuffle iterations"""
-        scores = self.get_scores()[0]
+    def calculate_pvalue_empirical(self, scores: list = None) -> float:
+        """Calculates a p-value to a target/query combination empirical with a given amount of shuffle iterations
+
+        >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--amount', '10', '--shuffle', 'b', '--threads', '3'])
+        >>> i.original_score = -10.0
+        >>> i.calculate_pvalue_empirical([-1.235, -1.435645, -6.234234, -12.999, -15.23, -6.98, -6.23, -2.78])
+        0.25
+        """
+        if not scores:
+            scores = self.get_scores()[0]
         return [score <= self.original_score for score in scores].count(True) / len(scores)
 
-    def calculate_pvalue(self) -> any:
-        """Calculates a p-value to a target/query combination by int. with a given amount of shuffle iterations"""
-        scores = self.get_scores()[0]
+    def calculate_pvalue(self, scores: list = None) -> any:
+        """Calculates a p-value to a target/query combination by int. with a given amount of shuffle iterations
+
+        >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--amount', '10', '--shuffle', 'b', '--threads', '3'])
+        >>> i.original_score = -10.0
+        >>> i.calculate_pvalue([-1.235, -1.435645, -6.234234, -12.999, -15.23, -6.98, -6.23, -2.78])
+        0.2429106747265256
+        """
+        if not scores:
+            scores = self.get_scores()[0]
 
         # Try to fit a gaussian distribution
         avg = np.mean(scores)  # average
@@ -167,20 +178,13 @@ class IntaRNApvalue:
 
         def gauss(x):
             return 1.0 / np.sqrt(2 * np.pi * var) * np.exp(-0.5 * ((x - avg) ** 2 / var))
-        return integ(gauss, -np.inf, self.original_score)
+        return integ(gauss, -np.inf, self.original_score)[0]
 
 
 if __name__ == '__main__':
     i = IntaRNApvalue()
 
     start = time.time()
-    scores = i.get_scores()
-    print('We have {} scores and {} non-interactions'.format(len(scores[0]), scores[1]))
-    # print(i.calculate_pvalue())
-    # print(i.calculate_pvalue_empirical())
-    print('This run took: {}'.format(time.time() - start))
-    # print(i.calculate_pvalue())
-    # i.get_dist_function(q, t, 1000, True, True)
-    # i.get_pvalue_graph(q, t, 4)
-    # print('Integriert: {}'.format(i.calculate_pvalue(q, t, 1000, True, True)))
-    # print('Empirisch:  {}'.format(i.calculate_pvalue_empirical(q, t, 1000, True, True)))
+    print('Integriert: {}'.format(i.calculate_pvalue()))
+    print('Empirisch:  {}'.format(i.calculate_pvalue_empirical()))
+    print('Dauer: {} s'.format(time.time() - start))
