@@ -48,7 +48,7 @@ class IntaRNApvalue:
     def process_cmd_args(self, test_args=None) -> None:
         """Processes all commandline args
 
-        >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--amount', '10', '--shuffle', 'b', '--threads', '3'])
+        >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--amount', '10', '-sm', 'b', '--threads', '3'])
         >>> i.query
         'AGGAUG'
         >>> i.target
@@ -67,7 +67,7 @@ class IntaRNApvalue:
         parser.add_argument('-t', '--target', dest='target', type=str, help='Target sequence', required=True)
         parser.add_argument('-a', '--amount', dest='amount', type=int, required=True,
                             help='How many randomly generated scores are used to calculate the p-value')
-        parser.add_argument('-s', '--shuffle', dest='shuffle', required=True, choices=['q', 't', 'b'],
+        parser.add_argument('-sm', '--shuffle-mode', dest='sm', required=True, choices=['q', 't', 'b'],
                             help='Which sequences are going to be shuffled: both, query only or target only')
         parser.add_argument('--threads', type=str, default='0', help='Sets the amount of threads used for IntaRNA')
         parser.add_argument('--seed', type=str, default=None,
@@ -76,8 +76,8 @@ class IntaRNApvalue:
         args = parser.parse_args(test_args)
         # TODO: check if query/target only contain allowed nucleotides?
 
-        shuffle_query = True if args.shuffle in ['b', 'q'] else False
-        shuffle_target = True if args.shuffle in ['b', 't'] else False
+        shuffle_query = True if args.sm in ['b', 'q'] else False
+        shuffle_target = True if args.sm in ['b', 't'] else False
         self.query, self.target, self.n = args.query, args.target, args.amount
         self.shuffle_query, self.shuffle_target, self.threads = shuffle_query, shuffle_target, args.threads
         random.seed(a=args.seed)
@@ -151,25 +151,25 @@ class IntaRNApvalue:
     def calculate_pvalue_empirical(self, scores: list = None) -> float:
         """Calculates a p-value to a target/query combination empirical with a given amount of shuffle iterations
 
-        >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--amount', '10', '--shuffle', 'b', '--threads', '3'])
+        >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--amount', '10', '-sm', 'b', '--threads', '3'])
         >>> i.original_score = -10.0
         >>> i.calculate_pvalue_empirical([-1.235, -1.435645, -6.234234, -12.999, -15.23, -6.98, -6.23, -2.78])
         0.25
         """
         if not scores:
-            scores, non_interactions = i.get_scores()
+            scores, non_interactions = self.get_scores()
         return [score <= self.original_score for score in scores].count(True) / len(scores)
 
     def calculate_pvalue_gauss(self, scores: list = None) -> any:
         """Calculates a p-value to a target/query combination by int. with a given amount of shuffle iterations
 
-        >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--amount', '10', '--shuffle', 'b', '--threads', '3'])
+        >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--amount', '10', '-sm', 'b', '--threads', '3'])
         >>> i.original_score = -10.0
         >>> i.calculate_pvalue_gauss([-1.235, -1.435645, -6.234234, -12.999, -15.23, -6.98, -6.23, -2.78])
         0.2429106747265256
         """
         if not scores:
-            scores, non_interactions = i.get_scores()
+            scores, non_interactions = self.get_scores()
 
         # Try to fit a gaussian distribution
         avg = np.mean(scores)  # average
@@ -187,4 +187,4 @@ if __name__ == '__main__':
     start = time.time()
     print('Integriert: {}'.format(i.calculate_pvalue_gauss()))
     print('Empirisch:  {}'.format(i.calculate_pvalue_empirical()))
-    print('Dauer: {} s'.format(time.time() - start))
+    print('Dauer: {}s'.format(time.time() - start))
