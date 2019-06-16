@@ -8,17 +8,15 @@ import random
 import os
 import sys
 import argparse
-import multiprocessing as mp
-from typing import Tuple, List
+from typing import List
 import time
-from matplotlib import pyplot as plt
 import numpy as np
 from scipy.integrate import quad as integ
 from DinuclShuffle import dinucl_shuffle as din_s
 
 
 class IntaRNApvalue:
-    def __init__(self):
+    def __init__(self, args=None):
         self.bin = self.find_binary()
         self.query = ''
         self.target = ''
@@ -26,14 +24,15 @@ class IntaRNApvalue:
         self.shuffle_query = False
         self.shuffle_target = False
         self.threads = ''
+        self.process_cmd_args(args)
+        self.original_score = self.get_single_score(self.query, self.target)  # TODO: leave this here?
+        if not self.original_score:
+            print('The query/target combination you specified has no favorable interaction')
+            sys.exit(1)
 
     @staticmethod
     def find_binary() -> str:
-        """Tries to find the IntaRNA executable and returns path to binary or exits with error code 1 if not found
-
-        >>> IntaRNApvalue.find_binary()
-        'IntaRNA'
-        """
+        """Tries to find the IntaRNA executable and returns path to binary or exits with error code 1 if not found"""
         if not run('IntaRNA --version', shell=True, stdout=PIPE, stderr=PIPE).returncode:
             return 'IntaRNA'
 
@@ -49,12 +48,12 @@ class IntaRNApvalue:
     def process_cmd_args(self, test_args=None) -> None:
         """Processes all commandline args
 
-        >>> i = IntaRNApvalue()
-        >>> i.process_cmd_args(['-q', 'AGCGU', '-t', 'AAAGGCC', '--amount', '10', '--shuffle', 'b', '--threads', '3'])
+        >>> i = IntaRNApvalue(['-q', 'AGGAUGGGGGAAACCCCAUACUCCUCACACACCAAAUCGCCCGAUUUAUCGGGCUUUUUU',
+        ... '-t', 'UUUAAAUUAAAAAAUCAUAGAAAAAGUAUCGUUU', '--amount', '10', '--shuffle', 'b', '--threads', '3'])
         >>> i.query
-        'AGCGU'
+        'AGGAUGGGGGAAACCCCAUACUCCUCACACACCAAAUCGCCCGAUUUAUCGGGCUUUUUU'
         >>> i.target
-        'AAAGGCC'
+        'UUUAAAUUAAAAAAUCAUAGAAAAAGUAUCGUUU'
         >>> i.n
         10
         >>> i.shuffle_query
@@ -106,31 +105,31 @@ class IntaRNApvalue:
             n += 1
         return fasta_str
 
-    """
-    def get_score(self, seq_tuple: Tuple[str, str]) -> float:
-        Gets the IntaRNA score of a single query/target tuple, query is first element, target second
-        res = os.popen('{} -q {} -t {}'.format(self.bin, seq_tuple[0], seq_tuple[1])).read()
-        if 'no favorable interaction for target and query' in res:
-            return 0.0  # TODO: What do with query/target combinations that don't interact?
-        return float(res.split('interaction energy = ')[1].split(' kcal/mol\n')[0])
-
-    def get_scores(self, seq_list: List[Tuple[str, str]]) -> List[float]:
-        Gets the IntaRNA score to a given list of query/target tuples, returns a sorted list of scores
-        pool = mp.Pool(processes=mp.cpu_count())  # we will do this in parallel and not sequential
-        scores = pool.map(self.get_score, seq_list)
-        scores.sort()  # Timsort is O(n log n) on average and worst, O(n) on best case
-        return scores
-    """
-
     def get_scores(self) -> List[float]:
-        """Calculates n IntaRNA scores from random sequences"""
-        if self.shuffle_query and self.shuffle_target:
-            # TODO: both shuffled
-            pass
+        """Calculates n IntaRNA scores from random sequences with given parameters as class variables
+
+        # >>> i = IntaRNApvalue()
+        # >>> i.n, i.query, i.target, i.shuffle_query, i.shuffle_target, i.threads = 13, 'ACG', 'GGAU', True, True, '0'
+        # >>> i.get_single_score(i.query, i.target)
+        """
+        scores = []
+        missing = self.n
+        if self.shuffle_query and self.shuffle_target:  # if both shuffled
+            while missing > 0:
+                shuffles_needed = int(np.ceil(np.sqrt(missing)))
+                query_shuffles = self.shuffle_sequence(self.query, shuffles_needed)
+                target_shuffles = self.to_fasta(self.shuffle_sequence(self.query, shuffles_needed)).encode('utf-8')
+
+                for query in query_shuffles:
+                    p = Popen([self.bin, '-q', query, '-t', 'STDIN', '--outMode=C', '--outCsvCols=E',
+                               '--threads', self.threads], stdout=PIPE, stdin=PIPE)
+                    stdout, stderr = p.communicate(input=target_shuffles)  # send shuffles as STDIN
+                    stdout = stdout.decode().split('\n')
+                    del stdout[0], stdout[-1]  # remove first element aka 'E' and trailing newline element
+                    scores.extend(stdout)  # add elements to scores
+                    missing = self.n - len(scores)
         else:
-            scores = []
-            missing = self.n
-            while missing:
+            while missing > 0:
                 if self.shuffle_query:
                     shuffles = self.to_fasta(self.shuffle_sequence(self.query, missing)).encode('utf-8')
                     p = Popen([self.bin, '-q', 'STDIN', '-t', self.target, '--outMode=C', '--outCsvCols=E',
@@ -139,25 +138,31 @@ class IntaRNApvalue:
                     shuffles = self.to_fasta(self.shuffle_sequence(self.target, missing)).encode('utf-8')
                     p = Popen([self.bin, '-q', self.query, '-t', 'STDIN', '--outMode=C', '--outCsvCols=E',
                                '--threads', self.threads], stdout=PIPE, stdin=PIPE)
-                res = p.communicate(input=shuffles)[0].decode().split('\n')  # send shuffles as STDIN
-                del res[0], res[-1]  # remove first element aka 'E' and trailing newline element
-                scores.extend(res)  # add elements to scores
+                stdout, stderr = p.communicate(input=shuffles)  # send shuffles as STDIN
+                stdout = stdout.decode().split('\n')
+                del stdout[0], stdout[-1]  # remove first element aka 'E' and trailing newline element
+                scores.extend(stdout)  # add elements to scores
                 missing = self.n - len(scores)
-            del scores[self.n-1:-1]  # delete unwanted scores so we have exact amount
-            return [float(x) for x in scores]  # return a new lists with all elements as float
+        del scores[self.n-1:-1]  # delete unwanted scores so we have exact amount
+        return [float(x) for x in scores]  # return a new lists with all elements as float
 
-    def calculate_pvalue_empirical(self, query: str, target: str, n: int, shuffle_q: bool, shuffle_t: bool) -> float:
+    def get_single_score(self, query: str, target: str) -> float:
+        """Gets an IntaRNA score to a single query/target combination"""
+        o = run('{} -q {} -t {} --outMode=C --outCsvCols=E --threads {}'.format(self.bin, query, target, self.threads),
+                stdout=PIPE, stdin=PIPE, shell=True).stdout.decode()
+        if o.startswith('E'):
+            return float(o.split('\n')[1])
+        else:
+            return 0
+
+    def calculate_pvalue_empirical(self) -> float:
         """Calculates a p-value to a target/query combination empirical with a given amount of shuffle iterations"""
-        original_score = self.get_score((query, target))
-        shuffles = self.shuffle_sequence(query, target, n, shuffle_q, shuffle_t)
-        scores = self.get_scores(shuffles)
-        return [score <= original_score for score in scores].count(True) / len(scores)
+        scores = self.get_scores()
+        return [score <= self.original_score for score in scores].count(True) / len(scores)
 
-    def calculate_pvalue(self, query: str, target: str, n: int, shuffle_q: bool, shuffle_t: bool) -> any:
+    def calculate_pvalue(self) -> any:
         """Calculates a p-value to a target/query combination by int. with a given amount of shuffle iterations"""
-        original_score = self.get_score((query, target))
-        shuffles = self.shuffle_sequence(query, target, n, shuffle_q, shuffle_t)
-        scores = self.get_scores(shuffles)
+        scores = self.get_scores()
 
         # Try to fit a gaussian distribution
         avg = np.mean(scores)  # average
@@ -166,58 +171,16 @@ class IntaRNApvalue:
 
         def gauss(x):
             return 1.0 / np.sqrt(2 * np.pi * var) * np.exp(-0.5 * ((x - avg) ** 2 / var))
-        return integ(gauss, -np.inf, original_score)
-
-    def get_dist_function(self, query: str, target: str, n: int, shuffle_q: bool, shuffle_t: bool) -> None:
-        """Gets a distribution function as bar histogram to a target/query sequence combination"""
-        shuffles = self.shuffle_sequence(query, target, n, shuffle_q, shuffle_t)
-        scores = self.get_scores(shuffles)
-
-        fig, ax = plt.subplots()
-        n, bins, patches = ax.hist(scores, 100, density=True, facecolor='g', range=(min(scores), 0))
-        plt.xlabel('MFE')
-        plt.ylabel('Wahrscheinlichkeit')
-        plt.title('Wahrscheinlichkeit eines IntaRNA scores aus randomisierten Sequenzen')
-        plt.grid(True)
-
-        # Try to fit a gaussian distribution
-        avg = np.mean(scores)  # average
-        var = np.var(scores)  # variance
-        std_dev = np.sqrt(var)  # standard deviation
-        # gauss_x = np.linspace(np.min(scores), np.max(scores), 100)  # even spaced numbers over interval
-        gauss_x = np.linspace(np.min(scores), 0, 100)  # even spaced numbers over interval
-        gauss_y = 1.0 / np.sqrt(2 * np.pi * var) * np.exp(-0.5 * ((gauss_x - avg) ** 2 / var))
-        # f(x, mu, std_dev) = 1/std_dev*sqrt(2*pi) * e^(-0.5 * ((x-mu)/std_dev)^2)
-        plt.plot(gauss_x, gauss_y, 'k--')
-
-        plt.show()
-
-    def get_pvalue_graph(self, query: str, target: str, max_exp: int = 4) -> None:
-        """Plots the p-value for different shuffle types and amounts, max_exp defines amount with 10^max_exp
-        TODO: something is weird, doesnt plot all values?!?!"""
-        for n in range(1, max_exp):
-            plt.plot(10 ** n, self.calculate_pvalue_empirical(query, target, 10 ** n, True, False), 'rx')
-            plt.plot(10 ** n, self.calculate_pvalue_empirical(query, target, 10 ** n, False, True), 'bx')
-            plt.plot(10 ** n, self.calculate_pvalue_empirical(query, target, 10 ** n, True, True), 'gx')
-        plt.title('p-values for different shuffle types and shuffle amount')
-        plt.xlabel('# of shuffles')
-        plt.ylabel('p-value')
-        plt.show()
+        return integ(gauss, -np.inf, self.original_score)
 
 
 if __name__ == '__main__':
-    import doctest
-    doctest.testmod()
-
-    q = 'AGGAUGGGGGAAACCCCAUACUCCUCACACACCAAAUCGCCCGAUUUAUCGGGCUUUUUU'
-    t = 'UUUAAAUUAAAAAAUCAUAGAAAAAGUAUCGUUUGAUACUUGUGAUUAUACUCAGUUAUACAGUAUCUUAAGGUGUUAUUAAUAGUGGUG' \
-        'AGGAGAAUUUAUGAAGCUUUUCAAAAGCUUGCUUGUGGCACCUGCAACUCUUGGUCUUUUAGCACCAAUGACCGCUACUGCUAAU'
-
     i = IntaRNApvalue()
-    i.process_cmd_args(['--query', q, '--target', t, '--amount', '1000', '--shuffle', 'q'])
-    t = time.time()
-    print(i.get_scores())
-    print(time.time() - t)
+
+    start = time.time()
+    print(i.calculate_pvalue())
+    print(i.calculate_pvalue_empirical())
+    print('This run took: {}'.format(time.time() - start))
     # print(i.calculate_pvalue())
     # i.get_dist_function(q, t, 1000, True, True)
     # i.get_pvalue_graph(q, t, 4)
