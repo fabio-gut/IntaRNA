@@ -6,7 +6,9 @@
 import matplotlib
 matplotlib.use('Agg')  # run matplotlib headless
 from matplotlib import pyplot as plt
+from scipy.stats import norm as gauss
 from scipy.stats import genextreme as gev
+from scipy.stats import gumbel_l as gum
 import numpy as np
 
 import sys
@@ -20,40 +22,39 @@ class Plots:
         """Gets a distribution function as bar histogram to a target/query sequence combination"""
         i = IntaRNApvalue(['-q', query, '-t', target, '-a', str(shuffles), '-sm', shuffle_mode, '--threads', '0'])
         scores, non_interactions = i.get_scores()
-        scores = [-score for score in scores]  # invert for better fitting because of negative skew
 
         percent_non_int = round(non_interactions / (shuffles + non_interactions) * 100, 1)
         annot_non_int = '{}% of all sequence pairs had no interaction'.format(percent_non_int)
 
         fig, ax = plt.subplots(figsize=(11.69, 8.27))  # DIN A4 size
-        ax.annotate(annot_non_int, (-0.35, 0.01), rotation=90, size=10)
-        n, bins, patches = ax.hist(scores, 100, density=True, facecolor='g', range=(0, max(scores)))
-        plt.xlabel('MFE (* -1)')
+        ax.annotate(annot_non_int, (0, 0.01), rotation=90, size=10)
+        n, bins, patches = ax.hist(scores, 100, density=True, facecolor='g', range=(min(scores), 0))
+        plt.xlabel('MFE')
         plt.ylabel('Density')
         shuffle_mode_str = 'query only' if shuffle_mode == 'q' else 'target only' if shuffle_mode == 't' else 'both'
         plt.title('Distribution of IntaRNA scores from shuffled sequences\nShuffle mode: {}'.format(shuffle_mode_str))
         plt.grid(True)
 
-        avg = np.mean(scores)  # average
-        var = np.var(scores)  # variance
-        std_dev = np.sqrt(var)  # standard deviation
+        # avg = np.mean(scores)  # average
+        # var = np.var(scores)  # variance
+        # std_dev = np.sqrt(var)  # standard deviation
 
         # GAUSSIAN DISTRIBUTION
+        loc, scale = gauss.fit(scores)
+        pdf = gauss.pdf(bins, loc=loc, scale=scale)
+        plt.plot(bins, pdf, 'k--', label='Gauss distribution')
         # f(x, mu, std_dev) = 1/std_dev*sqrt(2*pi) * e^(-0.5 * ((x-mu)/std_dev)^2)
-        plt.plot(bins, 1.0 / np.sqrt(2 * np.pi * var) * np.exp(-0.5 * ((bins - avg) ** 2 / var)),
-                 'k--', label='Gauss distribution')
+        # plt.plot(bins, 1.0 / np.sqrt(2 * np.pi * var) * np.exp(-0.5 * ((bins - avg) ** 2 / var)),
+        #          'k--', label='Gauss distribution')
 
         # GUMBEL DISTRIBUTION
-        # mu is location parameter and beta is scale parameter
-        # https://www.itl.nist.gov/div898/handbook/eda/section3/eda366g.htm
-        beta = std_dev * np.sqrt(6) / np.pi
-        mu = avg - np.euler_gamma * beta
-        plt.plot(bins, (1 / beta) * np.exp(-(bins - mu) / beta) * np.exp(-np.exp(-(bins - mu) / beta)),
-                 'r--', label='Gumbel distribution')
+        loc, scale = gum.fit(scores)
+        pdf = gum.pdf(bins, loc=loc, scale=scale)
+        plt.plot(bins, pdf, 'r--', label='Gumbel distribution')
 
         # GENERALIZED EXTREME VALUE DISTRIBUTION
-        fit = gev.fit(scores)  # TODO: c, loc, scale parameters
-        pdf = gev.pdf(bins, *fit)
+        shape, loc, scale = gev.fit(scores)
+        pdf = gev.pdf(bins, shape, loc=loc, scale=scale)
         plt.plot(bins, pdf, 'b--', label='Generalized Extreme Value distribution')
 
         plt.legend(loc='upper left')
@@ -90,7 +91,7 @@ if __name__ == '__main__':
     t = 'UUUAAAUUAAAAAAUCAUAGAAAAAGUAUCGUUUGAUACUUGUGAUUAUACUCAGUUAUACAGUAUCUUAAGGUGUUAUUAAUAGUGGUG' \
         'AGGAGAAUUUAUGAAGCUUUUCAAAAGCUUGCUUGUGGCACCUGCAACUCUUGGUCUUUUAGCACCAAUGACCGCUACUGCUAAU'
 
-    Plots.generate_histogram(q, t, 1000, 'b')
+    Plots.generate_histogram(q, t, 100, 'b')
     """
     Plots.generate_histogram(q, t, 1000, 'q')
     Plots.generate_histogram(q, t, 10000, 'q')

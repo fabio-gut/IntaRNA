@@ -12,6 +12,9 @@ from typing import List, Tuple
 import time
 import numpy as np
 from scipy.integrate import quad as integ
+from scipy.stats import norm as gauss
+from scipy.stats import genextreme as gev
+from scipy.stats import gumbel_l as gum
 from DinuclShuffle import dinucl_shuffle as din_s
 
 
@@ -186,9 +189,6 @@ class IntaRNApvalue:
         fitting a gumbel distribution and integration"""
         if not scores:
             scores, non_interactions = self.get_scores()
-
-        scores = [-score for score in scores]  # invert for better fitting because of negative skew
-        self.original_score = -self.original_score
 
         avg = np.mean(scores)  # average
         var = np.var(scores)  # variance
