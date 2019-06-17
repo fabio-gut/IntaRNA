@@ -15,14 +15,14 @@ from IntaRNApvalue import IntaRNApvalue
 
 class Plots:
     @staticmethod
-    def get_dist_function(query: str, target: str, shuffles: int, shuffle_mode='b') -> None:
+    def generate_histogram(query: str, target: str, shuffles: int, shuffle_mode='b') -> None:
         """Gets a distribution function as bar histogram to a target/query sequence combination"""
         i = IntaRNApvalue(['-q', query, '-t', target, '-a', str(shuffles), '-sm', shuffle_mode, '--threads', '0'])
         scores, non_interactions = i.get_scores()
         percent_non_int = round(non_interactions / (shuffles + non_interactions) * 100, 1)
         annot_non_int = '{}% of all sequence pairs had no interaction'.format(percent_non_int)
 
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(11.69, 8.27))  # DIN A4 size
         ax.annotate(annot_non_int, (0.05, 0.01), rotation=90, size=10)
         n, bins, patches = ax.hist(scores, 100, density=True, facecolor='g', range=(min(scores), 0))
         plt.xlabel('MFE')
@@ -48,12 +48,15 @@ class Plots:
                  'r--', label='Gumbel distribution')
 
         plt.legend(loc='upper left')
-        plt.savefig('dist_histogram_sm={}_{}.png'.format(shuffle_mode, shuffles), orientation='landscape', format='png')
+        plt.savefig('dist_histogram_sm={}_{}.png'.format(shuffle_mode, shuffles),
+                    orientation='landscape', format='png', dpi=300)
 
     @staticmethod
-    def get_pvalue_graph(query: str, target: str, max_exp: int = 4) -> None:
+    def generate_pvalue_graph(query: str, target: str, max_exp: int = 4) -> None:
         """Plots the p-value for different shuffle types and # of scores, max_exp defines # scores with 10^max_exp
         For higher order of exponents this will take a very long time"""
+
+        plt.figure(figsize=(11.69, 8.27))  # DIN A4 size
 
         for n in range(1, max_exp + 1):
             i = IntaRNApvalue(['-q', query, '-t', target, '--amount', str(10**n), '--shuffle', 'q', '--threads', '0'])
@@ -65,11 +68,12 @@ class Plots:
             i = IntaRNApvalue(['-q', query, '-t', target, '--amount', str(10**n), '--shuffle', 'b', '--threads', '0'])
             plt.semilogx(10 ** n, i.calculate_pvalue_gauss(), 'gx', label='query & target shuffled' if n == 1 else '')
 
-        plt.title('p-values for different shuffle types and shuffle amount')
-        plt.xlabel('# of used scores')
+        plt.title('p-values for different shuffle modes and amount of used scores')
+        plt.xlabel('# scores')
         plt.ylabel('p-value')
         plt.legend(loc='upper left')
-        plt.savefig('pvalue_graph_{}.png'.format(10**max_exp), orientation='landscape', format='png')
+        plt.savefig('pvalue_graph_{}.png'.format(10**max_exp),
+                    orientation='landscape', format='png', dpi=300)
 
 
 if __name__ == '__main__':
@@ -77,5 +81,5 @@ if __name__ == '__main__':
     t = 'UUUAAAUUAAAAAAUCAUAGAAAAAGUAUCGUUUGAUACUUGUGAUUAUACUCAGUUAUACAGUAUCUUAAGGUGUUAUUAAUAGUGGUG' \
         'AGGAGAAUUUAUGAAGCUUUUCAAAAGCUUGCUUGUGGCACCUGCAACUCUUGGUCUUUUAGCACCAAUGACCGCUACUGCUAAU'
 
-    Plots.get_dist_function(q, t, 100, 'b')
-    # Plots.get_pvalue_graph(q, t, 4)
+    # Plots.generate_histogram(q, t, 100, 'b')
+    Plots.generate_pvalue_graph(q, t, 1)
