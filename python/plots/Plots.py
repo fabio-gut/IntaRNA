@@ -15,16 +15,16 @@ from IntaRNApvalue import IntaRNApvalue
 
 class Plots:
     @staticmethod
-    def get_dist_function(query: str, target: str, n: int, shuffle_mode='b') -> None:
+    def get_dist_function(query: str, target: str, shuffles: int, shuffle_mode='b') -> None:
         """Gets a distribution function as bar histogram to a target/query sequence combination"""
-        i = IntaRNApvalue(['-q', query, '-t', target, '-a', str(n), '-sm', shuffle_mode, '--threads', '0'])
+        i = IntaRNApvalue(['-q', query, '-t', target, '-a', str(shuffles), '-sm', shuffle_mode, '--threads', '0'])
         scores, non_interactions = i.get_scores()
-        percent_non_int = round(non_interactions / (n + non_interactions) * 100, 1)
+        percent_non_int = round(non_interactions / (shuffles + non_interactions) * 100, 1)
         annot_non_int = '{}% of all sequence pairs had no interaction'.format(percent_non_int)
 
         fig, ax = plt.subplots()
         ax.annotate(annot_non_int, (0.05, 0.01), rotation=90, size=10)
-        n, bins, patches = ax.hist(scores, 100, density=True, facecolor='g', range=(min(scores), 0))
+        shuffles, bins, patches = ax.hist(scores, 100, density=True, facecolor='g', range=(min(scores), 0))
         plt.xlabel('MFE')
         plt.ylabel('MFE Frequency')
         plt.title('Distribution of IntaRNA scores from shuffled sequences')
@@ -43,7 +43,7 @@ class Plots:
         # TODO: Gumbel distribution
 
         plt.legend(loc='upper left')
-        plt.savefig('dist_histogram_{}'.format(n))
+        plt.savefig('dist_histogram_sm={}_{}'.format(shuffle_mode, shuffles), orientation='landscape', format='png')
 
     @staticmethod
     def get_pvalue_graph(query: str, target: str, max_exp: int = 4) -> None:
@@ -64,7 +64,7 @@ class Plots:
         plt.xlabel('# of used scores')
         plt.ylabel('p-value')
         plt.legend(loc='upper left')
-        plt.savefig('pvalue_graph_{}'.format(10**max_exp))
+        plt.savefig('pvalue_graph_{}'.format(10**max_exp), orientation='landscape', format='png')
 
 
 if __name__ == '__main__':
