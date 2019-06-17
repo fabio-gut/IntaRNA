@@ -15,18 +15,20 @@ from IntaRNApvalue import IntaRNApvalue
 
 class Plots:
     @staticmethod
-    def generate_histogram(query: str, target: str, shuffles: int, shuffle_mode='b') -> None:
+    def generate_histogram(query: str, target: str, shuffles: int, shuffle_mode='b', zoomed=False) -> None:
         """Gets a distribution function as bar histogram to a target/query sequence combination"""
         i = IntaRNApvalue(['-q', query, '-t', target, '-a', str(shuffles), '-sm', shuffle_mode, '--threads', '0'])
         scores, non_interactions = i.get_scores()
+        scores = [-score for score in scores]  # invert for better fitting because of negative skew
+
         percent_non_int = round(non_interactions / (shuffles + non_interactions) * 100, 1)
         annot_non_int = '{}% of all sequence pairs had no interaction'.format(percent_non_int)
 
         fig, ax = plt.subplots(figsize=(11.69, 8.27))  # DIN A4 size
         ax.annotate(annot_non_int, (0.05, 0.01), rotation=90, size=10)
-        n, bins, patches = ax.hist(scores, 100, density=True, facecolor='g', range=(min(scores), 0))
-        plt.xlabel('MFE')
-        plt.ylabel('MFE Frequency')
+        n, bins, patches = ax.hist(scores, 100, density=True, facecolor='g', range=(0, max(scores)))
+        plt.xlabel('MFE (* -1)')
+        plt.ylabel('Density')
         plt.title('Distribution of IntaRNA scores from shuffled sequences')
         plt.grid(True)
 
@@ -46,6 +48,8 @@ class Plots:
         mu = avg - 0.57721 * beta
         plt.plot(bins, (1 / beta) * np.exp(-(bins - mu) / beta) * np.exp(-np.exp(-(bins - mu) / beta)),
                  'r--', label='Gumbel distribution')
+
+        # TODO: GENERALIZED EXTREME VALUE DISTRIBUTION
 
         plt.legend(loc='upper left')
         plt.savefig('dist_histogram_sm={}_{}.png'.format(shuffle_mode, shuffles),
@@ -81,5 +85,5 @@ if __name__ == '__main__':
     t = 'UUUAAAUUAAAAAAUCAUAGAAAAAGUAUCGUUUGAUACUUGUGAUUAUACUCAGUUAUACAGUAUCUUAAGGUGUUAUUAAUAGUGGUG' \
         'AGGAGAAUUUAUGAAGCUUUUCAAAAGCUUGCUUGUGGCACCUGCAACUCUUGGUCUUUUAGCACCAAUGACCGCUACUGCUAAU'
 
-    # Plots.generate_histogram(q, t, 100, 'b')
-    Plots.generate_pvalue_graph(q, t, 1)
+    Plots.generate_histogram(q, t, 1000, 'b')
+    # Plots.generate_pvalue_graph(q, t, 1)
