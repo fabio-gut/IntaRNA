@@ -25,7 +25,7 @@ class Plots:
         annot_non_int = '{}% of all sequence pairs had no interaction'.format(percent_non_int)
 
         fig, ax = plt.subplots(figsize=(11.69, 8.27))  # DIN A4 size
-        ax.annotate(annot_non_int, (0.05, 0.01), rotation=90, size=10)
+        ax.annotate(annot_non_int, (-0.35, 0.01), rotation=90, size=10)
         n, bins, patches = ax.hist(scores, 100, density=True, facecolor='g', range=(0, max(scores)))
         plt.xlabel('MFE (* -1)')
         plt.ylabel('Density')
@@ -85,5 +85,5 @@ if __name__ == '__main__':
     t = 'UUUAAAUUAAAAAAUCAUAGAAAAAGUAUCGUUUGAUACUUGUGAUUAUACUCAGUUAUACAGUAUCUUAAGGUGUUAUUAAUAGUGGUG' \
         'AGGAGAAUUUAUGAAGCUUUUCAAAAGCUUGCUUGUGGCACCUGCAACUCUUGGUCUUUUAGCACCAAUGACCGCUACUGCUAAU'
 
-    Plots.generate_histogram(q, t, 1000, 'b')
+    Plots.generate_histogram(q, t, 100, 'b')
     # Plots.generate_pvalue_graph(q, t, 1)
