@@ -30,17 +30,22 @@ class Plots:
         plt.title('Distribution of IntaRNA scores from shuffled sequences')
         plt.grid(True)
 
-        # Try to fit a gaussian distribution
         avg = np.mean(scores)  # average
         var = np.var(scores)  # variance
         std_dev = np.sqrt(var)  # standard deviation
 
-        gauss_x = np.linspace(np.min(scores), np.max(scores), 100)  # even spaced numbers over interval
-        gauss_y = 1.0 / np.sqrt(2 * np.pi * var) * np.exp(-0.5 * ((gauss_x - avg) ** 2 / var))
+        # GAUSSIAN DISTRIBUTION
         # f(x, mu, std_dev) = 1/std_dev*sqrt(2*pi) * e^(-0.5 * ((x-mu)/std_dev)^2)
-        plt.plot(gauss_x, gauss_y, 'k--', label='Gauss distribution')
+        plt.plot(bins, 1.0 / np.sqrt(2 * np.pi * var) * np.exp(-0.5 * ((bins - avg) ** 2 / var)),
+                 'k--', label='Gauss distribution')
 
-        # TODO: Gumbel distribution
+        # TODO: GUMBEL DISTRIBUTION
+        # mu is location parameter and beta is scale parameter
+        # https://www.itl.nist.gov/div898/handbook/eda/section3/eda366g.htm
+        beta = std_dev * np.sqrt(6) / np.pi
+        mu = avg - 0.57721 * beta
+        plt.plot(bins, (1 / beta) * np.exp(-(bins - mu) / beta) * np.exp(-np.exp(-(bins - mu) / beta)),
+                 'r--', label='Gumbel distribution')
 
         plt.legend(loc='upper left')
         plt.savefig('dist_histogram_sm={}_{}.png'.format(shuffle_mode, shuffles), orientation='landscape', format='png')
@@ -72,5 +77,5 @@ if __name__ == '__main__':
     t = 'UUUAAAUUAAAAAAUCAUAGAAAAAGUAUCGUUUGAUACUUGUGAUUAUACUCAGUUAUACAGUAUCUUAAGGUGUUAUUAAUAGUGGUG' \
         'AGGAGAAUUUAUGAAGCUUUUCAAAAGCUUGCUUGUGGCACCUGCAACUCUUGGUCUUUUAGCACCAAUGACCGCUACUGCUAAU'
 
-    # Plots.get_dist_function(q, t, 100, 'b')
-    Plots.get_pvalue_graph(q, t, 4)
+    Plots.get_dist_function(q, t, 100, 'b')
+    # Plots.get_pvalue_graph(q, t, 4)
