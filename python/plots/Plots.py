@@ -7,8 +7,10 @@ import matplotlib
 matplotlib.use('Agg')  # run matplotlib headless
 from matplotlib import pyplot as plt
 import numpy as np
-from IntaRNApvalue import IntaRNApvalue
 
+import sys
+sys.path.insert(0, '..')  # add parent so we can import
+from IntaRNApvalue import IntaRNApvalue
 
 
 class Plots:
