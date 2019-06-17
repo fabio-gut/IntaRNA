@@ -175,25 +175,44 @@ class IntaRNApvalue:
         # Try to fit a gaussian distribution
         avg = np.mean(scores)  # average
         var = np.var(scores)  # variance
-        # std_dev = np.sqrt(var)  # standard deviation
+        std_dev = np.sqrt(var)  # standard deviation
 
         def gauss(x):
             return 1.0 / np.sqrt(2 * np.pi * var) * np.exp(-0.5 * ((x - avg) ** 2 / var))
         return integ(gauss, -np.inf, self.original_score)[0]
 
-    def calculate_pvalue_gumbel(self, scores: list = None):
+    def calculate_pvalue_gumbel(self, scores: list = None) -> float:
         """Calculates a p-value to a target/query combination by int. with a given amount of shuffle iterations by
         fitting a gumbel distribution and integration"""
         if not scores:
             scores, non_interactions = self.get_scores()
 
+        scores = [-score for score in scores]  # invert for better fitting because of negative skew
+        self.original_score = -self.original_score
+
+        avg = np.mean(scores)  # average
+        var = np.var(scores)  # variance
+        std_dev = np.sqrt(var)  # standard deviation
+
+        # mu is location parameter and beta is scale parameter
+        # https://www.itl.nist.gov/div898/handbook/eda/section3/eda366g.htm
+        beta = std_dev * np.sqrt(6) / np.pi
+        mu = avg - 0.57721 * beta
+
+        def gumbel(x):
+            return (1 / beta) * np.exp(-(x - mu) / beta) * np.exp(-np.exp(-(x - mu) / beta))
+        return integ(gumbel, -np.inf, self.original_score)[0]
+
+    def calculate_pvalue_generalized_ext_val(self, scores: list = None) -> float:
         # TODO
+        pass
 
 
 if __name__ == '__main__':
     i = IntaRNApvalue()
 
     start = time.time()
-    print('Integriert: {}'.format(i.calculate_pvalue_gauss()))
+    print('Gauss: {}'.format(i.calculate_pvalue_gauss()))
+    print('Gumbel: {}'.format(i.calculate_pvalue_gumbel()))
     print('Empirisch:  {}'.format(i.calculate_pvalue_empirical()))
     print('Dauer: {}s'.format(time.time() - start))
