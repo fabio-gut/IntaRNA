@@ -24,7 +24,7 @@ class Plots:
 
         fig, ax = plt.subplots()
         ax.annotate(annot_non_int, (0.05, 0.01), rotation=90, size=10)
-        shuffles, bins, patches = ax.hist(scores, 100, density=True, facecolor='g', range=(min(scores), 0))
+        n, bins, patches = ax.hist(scores, 100, density=True, facecolor='g', range=(min(scores), 0))
         plt.xlabel('MFE')
         plt.ylabel('MFE Frequency')
         plt.title('Distribution of IntaRNA scores from shuffled sequences')
