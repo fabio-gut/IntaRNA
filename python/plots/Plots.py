@@ -38,7 +38,7 @@ class Plots:
         # TODO: Gumbel distribution
 
         plt.legend(loc='upper left')
-        plt.show()
+        plt.savefig('dist_histogram_{}'.format(n))
 
     @staticmethod
     def get_pvalue_graph(query: str, target: str, max_exp: int = 4) -> None:
@@ -59,7 +59,7 @@ class Plots:
         plt.xlabel('# of used scores')
         plt.ylabel('p-value')
         plt.legend(loc='upper left')
-        plt.show()
+        plt.savefig('pvalue_graph_{}'.format(10**max_exp))
 
 
 if __name__ == '__main__':
