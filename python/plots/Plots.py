@@ -3,11 +3,12 @@
 # Copyright 2019
 # Author: Fabio Gutmann <fabio.gutmann@jupiter.uni-freiburg.de>
 
-from matplotlib import pyplot as plt
 import matplotlib
+matplotlib.use('Agg')  # run matplotlib headless
+from matplotlib import pyplot as plt
 import numpy as np
 from IntaRNApvalue import IntaRNApvalue
-matplotlib.use('Agg')  # run matplotlib headless
+
 
 
 class Plots:
