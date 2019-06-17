@@ -6,6 +6,7 @@
 import matplotlib
 matplotlib.use('Agg')  # run matplotlib headless
 from matplotlib import pyplot as plt
+from scipy.stats import genextreme as gev
 import numpy as np
 
 import sys
@@ -29,7 +30,8 @@ class Plots:
         n, bins, patches = ax.hist(scores, 100, density=True, facecolor='g', range=(0, max(scores)))
         plt.xlabel('MFE (* -1)')
         plt.ylabel('Density')
-        plt.title('Distribution of IntaRNA scores from shuffled sequences')
+        shuffle_mode_str = 'query only' if shuffle_mode == 'q' else 'target only' if shuffle_mode == 't' else 'both'
+        plt.title('Distribution of IntaRNA scores from shuffled sequences\nShuffle mode: {}'.format(shuffle_mode_str))
         plt.grid(True)
 
         avg = np.mean(scores)  # average
@@ -41,15 +43,18 @@ class Plots:
         plt.plot(bins, 1.0 / np.sqrt(2 * np.pi * var) * np.exp(-0.5 * ((bins - avg) ** 2 / var)),
                  'k--', label='Gauss distribution')
 
-        # TODO: GUMBEL DISTRIBUTION
+        # GUMBEL DISTRIBUTION
         # mu is location parameter and beta is scale parameter
         # https://www.itl.nist.gov/div898/handbook/eda/section3/eda366g.htm
         beta = std_dev * np.sqrt(6) / np.pi
-        mu = avg - 0.57721 * beta
+        mu = avg - np.euler_gamma * beta
         plt.plot(bins, (1 / beta) * np.exp(-(bins - mu) / beta) * np.exp(-np.exp(-(bins - mu) / beta)),
                  'r--', label='Gumbel distribution')
 
-        # TODO: GENERALIZED EXTREME VALUE DISTRIBUTION
+        # GENERALIZED EXTREME VALUE DISTRIBUTION
+        fit = gev.fit(scores)  # TODO: c, loc, scale parameters
+        pdf = gev.pdf(bins, *fit)
+        plt.plot(bins, pdf, 'b--', label='Generalized Extreme Value distribution')
 
         plt.legend(loc='upper left')
         plt.savefig('dist_histogram_sm={}_{}.png'.format(shuffle_mode, shuffles),
@@ -85,5 +90,15 @@ if __name__ == '__main__':
     t = 'UUUAAAUUAAAAAAUCAUAGAAAAAGUAUCGUUUGAUACUUGUGAUUAUACUCAGUUAUACAGUAUCUUAAGGUGUUAUUAAUAGUGGUG' \
         'AGGAGAAUUUAUGAAGCUUUUCAAAAGCUUGCUUGUGGCACCUGCAACUCUUGGUCUUUUAGCACCAAUGACCGCUACUGCUAAU'
 
+    Plots.generate_histogram(q, t, 1000, 'b')
+    """
+    Plots.generate_histogram(q, t, 1000, 'q')
+    Plots.generate_histogram(q, t, 10000, 'q')
+    Plots.generate_histogram(q, t, 100, 't')
+    Plots.generate_histogram(q, t, 1000, 't')
+    Plots.generate_histogram(q, t, 10000, 't')
     Plots.generate_histogram(q, t, 100, 'b')
+    Plots.generate_histogram(q, t, 1000, 'b')
+    Plots.generate_histogram(q, t, 10000, 'b')
+    """
     # Plots.generate_pvalue_graph(q, t, 1)
