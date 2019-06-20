@@ -13,7 +13,7 @@ from scipy.integrate import quad as integ
 from scipy.stats import norm as gauss
 from scipy.stats import genextreme as gev
 from scipy.stats import gumbel_l as gum
-from DinuclShuffle import dinucl_shuffle as din_s
+from DinuclShuffle import dinucl_shuffle
 
 
 class IntaRNApvalue:
@@ -38,9 +38,9 @@ class IntaRNApvalue:
     def main(self):
         """The main function"""
         scores, non_interactions = self.get_scores()
-        if self.scores_out:
+        if self.scores_out:  # output scores and exits the process
             print('\n'.join(iter([str(x) for x in scores])))
-            exit(1)
+            exit(0)
 
         pvalue = ''
         if self.dist == 'gauss':
@@ -91,22 +91,22 @@ class IntaRNApvalue:
         >>> i.scores_out
         True
         """
-        parser = argparse.ArgumentParser(description='Calculates p-values to IntaRNA scores')
+        parser = argparse.ArgumentParser(description='Calculates p-values to IntaRNA scores.')
         parser.add_argument('-q', '--query', dest='query', type=str, help='Query sequence', required=True)
         parser.add_argument('-t', '--target', dest='target', type=str, help='Target sequence', required=True)
         parser.add_argument('-n', '--scores', dest='n', type=int, required=True,
-                            help='How many randomly generated scores are used to calculate the p-value')
+                            help='How many randomly generated scores are used to calculate the p-value.')
         parser.add_argument('-m', '--shuffle-mode', dest='sm', required=True, choices=['q', 't', 'b'],
-                            help='Which sequences are going to be shuffled: both, query only or target only')
+                            help='Which sequences are going to be shuffled: both, query only or target only.')
         parser.add_argument('-d', '--distribution', dest='dist', choices=['gev', 'gumbel', 'gauss'], default='gev',
-                            help='Which distribution is fitted and used to calculate the pvalue')
+                            help='Which distribution is fitted and used to calculate the pvalue.')
         parser.add_argument('-s', '--scores-out', dest='scores_out', action='store_true',
-                            help='All IntaRNA scores used for pvalue calculation are output to STDOUT, if this is set,'
-                                 'there is no pvalue output given so you can pipe the output')
+                            help='All IntaRNA scores used for pvalue calculation are output to STDOUT.'
+                                 'There is no pvalue output, this function is useful for pipeing the scores.')
         # TODO: correct?
-        parser.add_argument('--threads', type=str, default='0', help='Sets the amount of threads used for IntaRNA')
+        parser.add_argument('--threads', type=str, default='0', help='Sets the amount of threads used for IntaRNA.')
         parser.add_argument('--seed', type=str, default=None,
-                            help='Random seed to make sequence generation deterministic')
+                            help='Random seed to make sequence generation deterministic.')
 
         args = parser.parse_args(test_args)
 
@@ -130,7 +130,7 @@ class IntaRNApvalue:
         >>> IntaRNApvalue.shuffle_sequence('AGGAUGGGGGA', 5)
         ['AUGGAGGGGGA', 'AUGGGGAGGGA', 'AGGGGAUGGGA', 'AUGGGGGAGGA', 'AUGGGAGGGGA']
         """
-        return [din_s(seq) for _ in range(n)]
+        return [dinucl_shuffle(seq) for _ in range(n)]
 
     @staticmethod
     def to_fasta(sequences: List[str]) -> str:
