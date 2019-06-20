@@ -27,11 +27,33 @@ class IntaRNApvalue:
         self.shuffle_query = False
         self.shuffle_target = False
         self.threads = ''
+        self.dist = ''
+        self.scores_out = False
         self.process_cmd_args(test_args)
         self.original_score = self.get_original_score()
         if not self.original_score and not test_args:  # exit if given seq has no interaction and not test mode
             print('The query/target combination you specified has no favorable interaction')
             sys.exit(1)
+        if not test_args:
+            self.main()
+
+    def main(self):
+        """The main function"""
+        scores, non_interactions = self.get_scores()
+        if self.scores_out:
+            print(scores)
+
+        pvalue = ''
+        if self.dist == 'gauss':
+            pvalue = self.calculate_pvalue_gauss(scores)
+        elif self.dist == 'none':
+            pvalue = self.calculate_pvalue_empirical(scores)
+        elif self.dist == 'gumbel':
+            pvalue = self.calculate_pvalue_gumbel(scores)
+        elif self.dist == 'gev':
+            pvalue = self.calculate_pvalue_generalized_ext_val(scores)
+
+        print('pvalue: {}'.format(pvalue))
 
     @staticmethod
     def find_binary() -> str:
@@ -51,7 +73,8 @@ class IntaRNApvalue:
     def process_cmd_args(self, test_args=None) -> None:
         """Processes all commandline args
 
-        >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--amount', '10', '-sm', 'b', '--threads', '3'])
+        >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '-n', '10', '-m', 'b', '-d', 'gauss', '-s',
+        ... '--threads', '3'])
         >>> i.query
         'AGGAUG'
         >>> i.target
@@ -64,25 +87,38 @@ class IntaRNApvalue:
         True
         >>> i.threads
         '3'
+        >>> i.dist
+        'gauss'
+        >>> i.scores_out
+        True
         """
         parser = argparse.ArgumentParser(description='Calculates p-values to IntaRNA scores')
         parser.add_argument('-q', '--query', dest='query', type=str, help='Query sequence', required=True)
         parser.add_argument('-t', '--target', dest='target', type=str, help='Target sequence', required=True)
-        parser.add_argument('-a', '--amount', dest='amount', type=int, required=True,
+        parser.add_argument('-n', '--scores', dest='n', type=int, required=True,
                             help='How many randomly generated scores are used to calculate the p-value')
-        parser.add_argument('-sm', '--shuffle-mode', dest='sm', required=True, choices=['q', 't', 'b'],
+        parser.add_argument('-m', '--shuffle-mode', dest='sm', required=True, choices=['q', 't', 'b'],
                             help='Which sequences are going to be shuffled: both, query only or target only')
+        parser.add_argument('-d', '--distribution', dest='dist', choices=['gev', 'gumbel', 'gauss'], default='gev',
+                            help='Which distribution is fitted and used to calculate the pvalue')
+        parser.add_argument('-s', '--scores-out', dest='scores_out', action='store_true',
+                            help='All IntaRNA scores used for pvalue calculation are output to STDOUT')
         parser.add_argument('--threads', type=str, default='0', help='Sets the amount of threads used for IntaRNA')
         parser.add_argument('--seed', type=str, default=None,
                             help='Random seed to make sequence generation deterministic')
 
         args = parser.parse_args(test_args)
-        # TODO: check if query/target only contain allowed nucleotides?
 
-        shuffle_query = True if args.sm in ['b', 'q'] else False
-        shuffle_target = True if args.sm in ['b', 't'] else False
-        self.query, self.target, self.n = args.query, args.target, args.amount
-        self.shuffle_query, self.shuffle_target, self.threads = shuffle_query, shuffle_target, args.threads
+        allowed = ['G', 'A', 'C', 'U']
+        if False in [n in allowed for n in args.query] or False in [n in allowed for n in args.target]:
+            print('A sequence you specified contains illegal characters, allowed: G, A, C, U')
+            sys.exit(1)
+
+        self.shuffle_query = True if args.sm in ['b', 'q'] else False
+        self.shuffle_target = True if args.sm in ['b', 't'] else False
+        for key, value in args.__dict__.items():
+            self.__setattr__(key, value)
+
         random.seed(a=args.seed)
 
     @staticmethod
@@ -154,7 +190,7 @@ class IntaRNApvalue:
     def calculate_pvalue_empirical(self, scores: list = None) -> float:
         """Calculates a p-value to a target/query combination empirical with a given amount of shuffle iterations
 
-        >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--amount', '10', '-sm', 'b', '--threads', '3'])
+        >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--scores', '10', '-sm', 'b', '--threads', '3'])
         >>> i.original_score = -10.0
         >>> i.calculate_pvalue_empirical([-1.235, -1.435645, -6.234234, -12.999, -15.23, -6.98, -6.23, -2.78])
         0.25
@@ -163,56 +199,51 @@ class IntaRNApvalue:
             scores, non_interactions = self.get_scores()
         return [score <= self.original_score for score in scores].count(True) / len(scores)
 
-    def calculate_pvalue_gauss(self, scores: list = None) -> float:
+    def calculate_pvalue_gauss(self, scores: list) -> float:
         """Calculates a p-value to a target/query combination by int. with a given amount of shuffle iterations by
-        fitting a gaussian distribution and integration
+        fitting a gaussian distribution and integrating from -inf to the original score
 
-        >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--amount', '10', '-sm', 'b', '--threads', '3'])
+        >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--scores', '10', '-sm', 'b', '--threads', '3'])
         >>> i.original_score = -10.0
         >>> i.calculate_pvalue_gauss([-1.235, -1.435645, -6.234234, -12.999, -15.23, -6.98, -6.23, -2.78])
         0.2429106747265256
         """
-        if not scores:
-            scores, non_interactions = self.get_scores()
+        loc, scale = gauss.fit(scores)
 
-        # Try to fit a gaussian distribution
-        avg = np.mean(scores)  # average
-        var = np.var(scores)  # variance
-        std_dev = np.sqrt(var)  # standard deviation
+        def f(x):
+            return gauss.pdf(x, loc=loc, scale=scale)
+        return integ(f, -np.inf, self.original_score)[0]
 
-        def gauss(x):
-            return 1.0 / np.sqrt(2 * np.pi * var) * np.exp(-0.5 * ((x - avg) ** 2 / var))
-        return integ(gauss, -np.inf, self.original_score)[0]
-
-    def calculate_pvalue_gumbel(self, scores: list = None) -> float:
+    def calculate_pvalue_gumbel(self, scores: list) -> float:
         """Calculates a p-value to a target/query combination by int. with a given amount of shuffle iterations by
-        fitting a gumbel distribution and integration"""
-        if not scores:
-            scores, non_interactions = self.get_scores()
+        fitting a gumbel distribution and integrating from -inf to the original score
 
-        avg = np.mean(scores)  # average
-        var = np.var(scores)  # variance
-        std_dev = np.sqrt(var)  # standard deviation
+        >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--scores', '10', '-sm', 'b', '--threads', '3'])
+        >>> i.original_score = -10.0
+        >>> i.calculate_pvalue_gumbel([-1.235, -1.435645, -6.234234, -12.999, -15.23, -6.98, -6.23, -2.78])
+        0.19721934073203196
+        """
+        loc, scale = gum.fit(scores)
 
-        # mu is location parameter and beta is scale parameter
-        # https://www.itl.nist.gov/div898/handbook/eda/section3/eda366g.htm
-        beta = std_dev * np.sqrt(6) / np.pi
-        mu = avg - 0.57721 * beta
+        def f(x):
+            return gum.pdf(x, loc=loc, scale=scale)
+        return integ(f, -np.inf, self.original_score)[0]
 
-        def gumbel(x):
-            return (1 / beta) * np.exp(-(x - mu) / beta) * np.exp(-np.exp(-(x - mu) / beta))
-        return integ(gumbel, -np.inf, self.original_score)[0]
+    def calculate_pvalue_generalized_ext_val(self, scores: list) -> float:
+        """Calculates a p-value to a target/query combination by int. with a given amount of shuffle iterations by
+        fitting a generalized extreme value distribution and integrating from -inf to the original score
 
-    def calculate_pvalue_generalized_ext_val(self, scores: list = None) -> float:
-        # TODO
-        pass
+        >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--scores', '10', '-sm', 'b', '--threads', '3'])
+        >>> i.original_score = -10.0
+        >>> i.calculate_pvalue_generalized_ext_val([-1.235, -1.435645, -6.234234, -12.999, -15.23, -6.98, -6.23, -2.78])
+        0.17611816922560236
+        """
+        shape, loc, scale = gev.fit(scores)
+
+        def f(x):
+            return gev.pdf(x, shape, loc=loc, scale=scale)
+        return integ(f, -np.inf, self.original_score)[0]
 
 
 if __name__ == '__main__':
     i = IntaRNApvalue()
-
-    start = time.time()
-    print('Gauss: {}'.format(i.calculate_pvalue_gauss()))
-    print('Gumbel: {}'.format(i.calculate_pvalue_gumbel()))
-    print('Empirisch:  {}'.format(i.calculate_pvalue_empirical()))
-    print('Dauer: {}s'.format(time.time() - start))
