@@ -33,7 +33,7 @@ class IntaRNApvalue:
         self.original_score = self.get_original_score()
         if not self.original_score and not test_args:  # exit if given seq has no interaction and not test mode
             print('The query/target combination you specified has no favorable interaction')
-            sys.exit(1)
+            exit(1)
         if not test_args:
             self.main()
 
@@ -41,7 +41,8 @@ class IntaRNApvalue:
         """The main function"""
         scores, non_interactions = self.get_scores()
         if self.scores_out:
-            print(scores)
+            print('\n'.join(iter([str(x) for x in scores])))
+            exit(1)
 
         pvalue = ''
         if self.dist == 'gauss':
@@ -68,7 +69,7 @@ class IntaRNApvalue:
                 return os.path.join(dir_path, bin_name)
 
         print('Error: Cannot find IntaRNA binary executable, please add it to your PATH')
-        sys.exit(1)
+        exit(1)
 
     def process_cmd_args(self, test_args=None) -> None:
         """Processes all commandline args
@@ -102,7 +103,9 @@ class IntaRNApvalue:
         parser.add_argument('-d', '--distribution', dest='dist', choices=['gev', 'gumbel', 'gauss'], default='gev',
                             help='Which distribution is fitted and used to calculate the pvalue')
         parser.add_argument('-s', '--scores-out', dest='scores_out', action='store_true',
-                            help='All IntaRNA scores used for pvalue calculation are output to STDOUT')
+                            help='All IntaRNA scores used for pvalue calculation are output to STDOUT, if this is set,'
+                                 'there is no pvalue output given so you can pipe the output')
+        # TODO: correct?
         parser.add_argument('--threads', type=str, default='0', help='Sets the amount of threads used for IntaRNA')
         parser.add_argument('--seed', type=str, default=None,
                             help='Random seed to make sequence generation deterministic')
@@ -112,7 +115,7 @@ class IntaRNApvalue:
         allowed = ['G', 'A', 'C', 'U']
         if False in [n in allowed for n in args.query] or False in [n in allowed for n in args.target]:
             print('A sequence you specified contains illegal characters, allowed: G, A, C, U')
-            sys.exit(1)
+            exit(1)
 
         self.shuffle_query = True if args.sm in ['b', 'q'] else False
         self.shuffle_target = True if args.sm in ['b', 't'] else False
