@@ -101,7 +101,7 @@ class IntaRNApvalue:
         parser.add_argument('-d', '--distribution', dest='dist', choices=['gev', 'gumbel', 'gauss'], default='gev',
                             help='Which distribution is fitted and used to calculate the pvalue.')
         parser.add_argument('-s', '--scores-out', dest='scores_out', action='store_true',
-                            help='All IntaRNA scores used for pvalue calculation are output to STDOUT.'
+                            help='All IntaRNA scores used for pvalue calculation are output to STDOUT. '
                                  'There is no pvalue output, this function is useful for pipeing the scores.')
         # TODO: correct?
         parser.add_argument('--threads', type=str, default='0', help='Sets the amount of threads used for IntaRNA.')
