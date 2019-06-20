@@ -6,10 +6,8 @@
 from subprocess import PIPE, Popen, run
 import random
 import os
-import sys
 import argparse
 from typing import List, Tuple
-import time
 import numpy as np
 from scipy.integrate import quad as integ
 from scipy.stats import norm as gauss
