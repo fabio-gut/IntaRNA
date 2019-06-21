@@ -20,7 +20,7 @@ class Plots:
     @staticmethod
     def generate_histogram(query: str, target: str, shuffles: int, shuffle_mode='b', zoomed=False) -> None:
         """Gets a distribution function as bar histogram to a target/query sequence combination"""
-        i = IntaRNApvalue(['-q', query, '-t', target, '-a', str(shuffles), '-sm', shuffle_mode, '--threads', '0'])
+        i = IntaRNApvalue(['-q', query, '-t', target, '-n', str(shuffles), '-m', shuffle_mode, '--threads', '0'])
         scores, non_interactions = i.get_scores()
 
         percent_non_int = round(non_interactions / (shuffles + non_interactions) * 100, 1)
@@ -35,22 +35,15 @@ class Plots:
         plt.title('Distribution of IntaRNA scores from shuffled sequences\nShuffle mode: {}'.format(shuffle_mode_str))
         plt.grid(True)
 
-        # avg = np.mean(scores)  # average
-        # var = np.var(scores)  # variance
-        # std_dev = np.sqrt(var)  # standard deviation
-
         # GAUSSIAN DISTRIBUTION
         loc, scale = gauss.fit(scores)
         pdf = gauss.pdf(bins, loc=loc, scale=scale)
         plt.plot(bins, pdf, 'k--', label='Gauss distribution')
-        # f(x, mu, std_dev) = 1/std_dev*sqrt(2*pi) * e^(-0.5 * ((x-mu)/std_dev)^2)
-        # plt.plot(bins, 1.0 / np.sqrt(2 * np.pi * var) * np.exp(-0.5 * ((bins - avg) ** 2 / var)),
-        #          'k--', label='Gauss distribution')
 
         # GUMBEL DISTRIBUTION
-        loc, scale = gum.fit(scores)
-        pdf = gum.pdf(bins, loc=loc, scale=scale)
-        plt.plot(bins, pdf, 'r--', label='Gumbel distribution')
+        # loc, scale = gum.fit(scores)
+        # pdf = gum.pdf(bins, loc=loc, scale=scale)
+        # plt.plot(bins, pdf, 'r--', label='Gumbel distribution')
 
         # GENERALIZED EXTREME VALUE DISTRIBUTION
         shape, loc, scale = gev.fit(scores)
@@ -70,13 +63,16 @@ class Plots:
 
         for n in range(1, max_exp + 1):
             i = IntaRNApvalue(['-q', query, '-t', target, '--amount', str(10**n), '--shuffle', 'q', '--threads', '0'])
-            plt.semilogx(10 ** n, i.calculate_pvalue_gauss(), 'rx', label='only query shuffled' if n == 1 else '')
+            s, non_i = i.get_scores()
+            plt.semilogx(10 ** n, i.calculate_pvalue_gauss(s), 'rx', label='only query shuffled' if n == 1 else '')
 
             i = IntaRNApvalue(['-q', query, '-t', target, '--amount', str(10**n), '--shuffle', 't', '--threads', '0'])
-            plt.semilogx(10 ** n, i.calculate_pvalue_gauss(), 'bx', label='only target shuffled' if n == 1 else '')
+            s, non_i = i.get_scores()
+            plt.semilogx(10 ** n, i.calculate_pvalue_gauss(s), 'bx', label='only target shuffled' if n == 1 else '')
 
             i = IntaRNApvalue(['-q', query, '-t', target, '--amount', str(10**n), '--shuffle', 'b', '--threads', '0'])
-            plt.semilogx(10 ** n, i.calculate_pvalue_gauss(), 'gx', label='query & target shuffled' if n == 1 else '')
+            s, non_i = i.get_scores()
+            plt.semilogx(10 ** n, i.calculate_pvalue_gauss(s), 'gx', label='query & target shuffled' if n == 1 else '')
 
         plt.title('p-values for different shuffle modes and amount of used scores')
         plt.xlabel('# scores')
