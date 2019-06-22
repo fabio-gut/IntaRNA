@@ -12,7 +12,6 @@ setup(
     python_requires='>=3.6.0',
     url='https://github.com/fabio-gut/IntaRNA/tree/pvalue/',
     packages=['IntaRNApvalue'],
-    # py_modules=['IntaRNApvalue'],
     install_requires=['scipy', 'numpy'],
     include_package_data=True,
     classifiers=[
