@@ -111,6 +111,8 @@ class IntaRNApvalue:
         args = parser.parse_args(test_args)
 
         allowed = ['G', 'A', 'C', 'U']
+        args.query = args.query.upper()
+        args.target = args.target.upper()
         if False in [n in allowed for n in args.query] or False in [n in allowed for n in args.target]:
             print('A sequence you specified contains illegal characters, allowed: G, A, C, U')
             exit(1)
