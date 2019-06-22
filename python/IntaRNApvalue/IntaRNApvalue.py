@@ -13,7 +13,7 @@ from scipy.integrate import quad as integ
 from scipy.stats import norm as gauss
 from scipy.stats import genextreme as gev
 from scipy.stats import gumbel_l as gum
-from DinuclShuffle import dinucl_shuffle
+from IntaRNApvalue.DinuclShuffle import dinucl_shuffle
 
 
 class IntaRNApvalue:
