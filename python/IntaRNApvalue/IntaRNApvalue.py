@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # Copyright 2019
-# Author: Fabio Gutmann <fabio.gutmann@jupiter.uni-freiburg.de>
+# Author: Fabio Gutmann <https://github.com/fabio-gut>
 
 from subprocess import PIPE, Popen, run
 import random
@@ -26,7 +26,7 @@ class IntaRNApvalue:
         self.shuffle_target = False
         self.threads = ''
         self.dist = ''
-        self.scores_out = False
+        self.output = ''
         self.process_cmd_args(test_args)
         self.original_score = self.get_original_score()
         if not self.original_score and not test_args:  # exit if given seq has no interaction and not test mode
@@ -38,7 +38,7 @@ class IntaRNApvalue:
     def main(self):
         """The main function"""
         scores, non_interactions = self.get_scores()
-        if self.scores_out:  # output scores and exits the process
+        if self.output == 'scores':  # output scores and exit the process
             print('\n'.join(iter([str(x) for x in scores])))
             exit(0)
 
@@ -72,7 +72,7 @@ class IntaRNApvalue:
     def process_cmd_args(self, test_args=None) -> None:
         """Processes all commandline args
 
-        >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '-n', '10', '-m', 'b', '-d', 'gauss', '-s',
+        >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '-n', '10', '-m', 'b', '-d', 'gauss',
         ... '--threads', '3'])
         >>> i.query
         'AGGAUG'
@@ -88,8 +88,8 @@ class IntaRNApvalue:
         '3'
         >>> i.dist
         'gauss'
-        >>> i.scores_out
-        True
+        >>> i.output
+        'pvalue'
         """
         parser = argparse.ArgumentParser(description='Calculates p-values to IntaRNA scores.')
         parser.add_argument('-q', '--query', dest='query', type=str, help='Query sequence', required=True)
@@ -100,10 +100,9 @@ class IntaRNApvalue:
                             help='Which sequences are going to be shuffled: both, query only or target only.')
         parser.add_argument('-d', '--distribution', dest='dist', choices=['gev', 'gumbel', 'gauss'], default='gev',
                             help='Which distribution is fitted and used to calculate the pvalue.')
-        parser.add_argument('-s', '--scores-out', dest='scores_out', action='store_true',
-                            help='All IntaRNA scores used for pvalue calculation are output to STDOUT. '
-                                 'There is no pvalue output, so this function is useful for pipeing the scores.')
-        # TODO: correct?
+        parser.add_argument('-o', '--output', dest='output', choices=['pvalue', 'scores'], default='pvalue',
+                            help='If set to scores, outputs all IntaRNA scores from random sequences to STDOUT. '
+                                 'This is useful for pipeing the scores. Otherwise outputs just the pvalue.')
         parser.add_argument('--threads', type=str, default='0', help='Sets the amount of threads used for IntaRNA.')
         parser.add_argument('--seed', type=str, default=None,
                             help='Random seed to make sequence generation deterministic.')
