@@ -29,9 +29,6 @@ class IntaRNApvalue:
         self.output = ''
         self.process_cmd_args(test_args)
         self.original_score = self.get_original_score()
-        if not self.original_score and not test_args:  # exit if given seq has no interaction and not test mode
-            print('The query/target combination you specified has no favorable interaction')
-            exit(1)
         if not test_args:
             self.main()
 
@@ -41,6 +38,10 @@ class IntaRNApvalue:
         if self.output == 'scores':  # output scores and exit the process
             print('\n'.join(iter([str(x) for x in scores])))
             exit(0)
+
+        if not self.original_score:  # exit if given seq has no interaction and not scores output only mode
+            print('The query/target combination you specified has no favorable interaction')
+            exit(1)
 
         pvalue = ''
         if self.dist == 'gauss':
