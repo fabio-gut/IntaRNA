@@ -4,13 +4,13 @@
 from setuptools import setup
 
 setup(
-    name='IntaRNApvalue',
+    name='intarnapvalue',
     version='0.1',
     description='Calculates pvalues to IntaRNA scores',
     author='Fabio Gutmann',
     python_requires='>=3.6.0',
     url='https://github.com/fabio-gut/IntaRNA/tree/pvalue/',
-    packages=['IntaRNApvalue'],
+    packages=['intarnapvalue'],
     install_requires=['scipy', 'numpy'],
     include_package_data=True,
     classifiers=[

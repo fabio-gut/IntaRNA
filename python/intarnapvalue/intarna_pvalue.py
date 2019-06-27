@@ -13,7 +13,7 @@ from scipy.integrate import quad as integ
 from scipy.stats import norm as gauss
 from scipy.stats import genextreme as gev
 from scipy.stats import gumbel_l as gum
-from IntaRNApvalue import dinucl_shuffle
+from intarnapvalue import dinucl_shuffle
 
 
 class IntaRNApvalue:
@@ -246,3 +246,7 @@ class IntaRNApvalue:
         def f(x):
             return gev.pdf(x, shape, loc=loc, scale=scale)
         return integ(f, -np.inf, self.original_score)[0]
+
+
+if __name__ == '__main__':
+    i = IntaRNApvalue()

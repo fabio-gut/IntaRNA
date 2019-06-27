@@ -3,9 +3,9 @@
 # Copyright 2019
 # Author: Fabio Gutmann <https://github.com/fabio-gut>
 
-import IntaRNApvalue
+import intarnapvalue
 
 if __name__ == '__main__':
     import doctest
-    doctest.testmod(IntaRNApvalue)
+    doctest.testmod(intarnapvalue)
 
