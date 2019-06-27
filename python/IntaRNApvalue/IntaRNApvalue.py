@@ -32,7 +32,7 @@ class IntaRNApvalue:
         if not test_args:
             self.main()
 
-    def main(self):
+    def main(self) -> None:
         """The main function"""
         scores, non_interactions = self.get_scores()
         if self.output == 'scores':  # output scores and exit the process
