@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # Copyright 2019
-# Author: Fabio Gutmann <fabio.gutmann@jupiter.uni-freiburg.de>
+# Author: Fabio Gutmann <https://github.com/fabio-gut>
 
 import IntaRNApvalue
 
