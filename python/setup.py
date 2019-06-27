@@ -8,7 +8,6 @@ setup(
     version='0.1',
     description='Calculates pvalues to IntaRNA scores',
     author='Fabio Gutmann',
-    author_email='fabio.gutmann@jupiter.uni-freiburg.de',
     python_requires='>=3.6.0',
     url='https://github.com/fabio-gut/IntaRNA/tree/pvalue/',
     packages=['IntaRNApvalue'],
