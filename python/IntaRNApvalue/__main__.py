@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
 
-from IntaRNApvalue import IntaRNApvalue
+from IntaRNApvalue import intarna_pvalue
 
-i = IntaRNApvalue.IntaRNApvalue()
+i = intarna_pvalue.IntaRNApvalue()

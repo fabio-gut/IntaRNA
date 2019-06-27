@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# DinuclShuffle.py
+# dinucl_shuffle.py
 # Original code by P. Clote, Oct 2003
 # Modified for python3 by Fabio Gutmann <https://github.com/fabio-gut>, 2019
 # NOTE: One cannot use function "count(s,word)" to count the number

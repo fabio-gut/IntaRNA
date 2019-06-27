@@ -13,7 +13,7 @@ from scipy.integrate import quad as integ
 from scipy.stats import norm as gauss
 from scipy.stats import genextreme as gev
 from scipy.stats import gumbel_l as gum
-from IntaRNApvalue import DinuclShuffle
+from IntaRNApvalue import dinucl_shuffle
 
 
 class IntaRNApvalue:
@@ -132,7 +132,7 @@ class IntaRNApvalue:
         >>> IntaRNApvalue.shuffle_sequence('AGGAUGGGGGA', 5)
         ['AUGGAGGGGGA', 'AUGGGGAGGGA', 'AGGGGAUGGGA', 'AUGGGGGAGGA', 'AUGGGAGGGGA']
         """
-        return [DinuclShuffle.dinucl_shuffle(seq) for _ in range(n)]
+        return [dinucl_shuffle.dinucl_shuffle(seq) for _ in range(n)]
 
     @staticmethod
     def to_fasta(sequences: List[str]) -> str:
