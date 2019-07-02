@@ -43,7 +43,7 @@ class IntaRNApvalue:
             print('The query/target combination you specified has no favorable interaction')
             exit(1)
 
-        pvalue = ''
+        pvalue = 0.0
         if self.dist == 'gauss':
             pvalue = self.calculate_pvalue_gauss(self.original_score, scores)
         elif self.dist == 'none':
