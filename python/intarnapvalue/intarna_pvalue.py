@@ -184,7 +184,7 @@ class IntaRNApvalue:
         """Gets an IntaRNA score to a single query/target combination"""
         o = run('{} -q {} -t {} --outMode=C --outCsvCols=E --threads {}'.format(self.bin, self.query, self.target,
                                                                                 self.threads),
-                stdout=PIPE, stdin=PIPE, shell=True).stdout.decode()
+                stdout=PIPE, stdin=PIPE, shell=True, universal_newlines=True).stdout
         if o.startswith('E') and o != 'E\n':
             return float(o.split('\n')[1])
         else:
