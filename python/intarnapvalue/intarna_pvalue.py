@@ -45,13 +45,13 @@ class IntaRNApvalue:
 
         pvalue = ''
         if self.dist == 'gauss':
-            pvalue = self.calculate_pvalue_gauss(scores)
+            pvalue = self.calculate_pvalue_gauss(self.original_score, scores)
         elif self.dist == 'none':
-            pvalue = self.calculate_pvalue_empirical(scores)
+            pvalue = self.calculate_pvalue_empirical(self.original_score, scores)
         elif self.dist == 'gumbel':
-            pvalue = self.calculate_pvalue_gumbel(scores)
+            pvalue = self.calculate_pvalue_gumbel(self.original_score, scores)
         elif self.dist == 'gev':
-            pvalue = self.calculate_pvalue_generalized_ext_val(scores)
+            pvalue = self.calculate_pvalue_gev(self.original_score, scores)
 
         print('pvalue: {}'.format(pvalue))
 
@@ -190,62 +190,60 @@ class IntaRNApvalue:
         else:
             return 0  # no interaction
 
-    def calculate_pvalue_empirical(self, scores: list = None) -> float:
+    @staticmethod
+    def calculate_pvalue_empirical(original_score, scores: list = None) -> float:
         """Calculates a p-value to a target/query combination empirical with a given amount of shuffle iterations
 
         >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--scores', '10', '-sm', 'b', '--threads', '3'])
-        >>> i.original_score = -10.0
-        >>> i.calculate_pvalue_empirical([-1.235, -1.435645, -6.234234, -12.999, -15.23, -6.98, -6.23, -2.78])
+        >>> i.calculate_pvalue_empirical(-10.0, [-1.235, -1.435645, -6.234234, -12.999, -15.23, -6.98, -6.23, -2.78])
         0.25
         """
-        if not scores:
-            scores, non_interactions = self.get_scores()
-        return [score <= self.original_score for score in scores].count(True) / len(scores)
+        return [score <= original_score for score in scores].count(True) / len(scores)
 
-    def calculate_pvalue_gauss(self, scores: list) -> float:
+    @staticmethod
+    def calculate_pvalue_gauss(original_score, scores: list) -> float:
         """Calculates a p-value to a target/query combination by int. with a given amount of shuffle iterations by
         fitting a gaussian distribution and integrating from -inf to the original score
 
         >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--scores', '10', '-sm', 'b', '--threads', '3'])
-        >>> i.original_score = -10.0
-        >>> i.calculate_pvalue_gauss([-1.235, -1.435645, -6.234234, -12.999, -15.23, -6.98, -6.23, -2.78])
+        >>> i.calculate_pvalue_gauss(-10.0, [-1.235, -1.435645, -6.234234, -12.999, -15.23, -6.98, -6.23, -2.78])
         0.2429106747265256
         """
         loc, scale = gauss.fit(scores)
 
         def f(x):
             return gauss.pdf(x, loc=loc, scale=scale)
-        return integ(f, -np.inf, self.original_score)[0]
+        return integ(f, -np.inf, original_score)[0]
 
-    def calculate_pvalue_gumbel(self, scores: list) -> float:
+    @staticmethod
+    def calculate_pvalue_gumbel(original_score: float, scores: list) -> float:
         """Calculates a p-value to a target/query combination by int. with a given amount of shuffle iterations by
         fitting a gumbel distribution and integrating from -inf to the original score
 
         >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--scores', '10', '-sm', 'b', '--threads', '3'])
-        >>> i.original_score = -10.0
-        >>> i.calculate_pvalue_gumbel([-1.235, -1.435645, -6.234234, -12.999, -15.23, -6.98, -6.23, -2.78])
+        >>> i.calculate_pvalue_gumbel(-10.0, [-1.235, -1.435645, -6.234234, -12.999, -15.23, -6.98, -6.23, -2.78])
         0.19721934073203196
         """
         loc, scale = gum.fit(scores)
 
         def f(x):
             return gum.pdf(x, loc=loc, scale=scale)
-        return integ(f, -np.inf, self.original_score)[0]
+        return integ(f, -np.inf, original_score)[0]
 
-    def calculate_pvalue_generalized_ext_val(self, scores: list) -> float:
+    @staticmethod
+    def calculate_pvalue_gev(original_score: float, scores: list) -> float:
         """Calculates a p-value to a target/query combination by int. with a given amount of shuffle iterations by
         fitting a generalized extreme value distribution and integrating from -inf to the original score
 
         >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--scores', '10', '-sm', 'b', '--threads', '3'])
-        >>> i.original_score = -10.0
-        >>> i.calculate_pvalue_generalized_ext_val([-1.235, -1.435645, -6.234234, -12.999, -15.23, -6.98, -6.23, -2.78])
+        >>> i.calculate_pvalue_gev(-10.0, [-1.235, -1.435645, -6.234234, -12.999, -15.23, -6.98, -6.23, -2.78])
         0.17611816922560236
         """
         shape, loc, scale = gev.fit(scores)
 
         def f(x):
             return gev.pdf(x, shape, loc=loc, scale=scale)
-        return integ(f, -np.inf, self.original_score)[0]
+        return integ(f, -np.inf, original_score)[0]
 
 
 if __name__ == '__main__':
