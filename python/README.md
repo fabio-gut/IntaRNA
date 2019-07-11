@@ -9,23 +9,38 @@ This pvalue is a score for the likelihood that a sequence with a better interact
 It can thus be used as a measurement for how good an interaction between two sequences is.
 
 ### Dependencies:
+- IntaRNA
+##### And if you want to run it with python or compile it yourself:
 - Python 3
 - numpy
 - scipy
 
 ### Installation:
+You can either run this tool directly with python or run it as a compiled binary.
+##### Run with python directly:
 Clone this repo and run:
 ```bash
 python setup.py install
 ```
-All dependencies will be installed automatically.
+All dependencies (except IntaRNA) will be installed automatically.
 This way it can also be installed in a virtual environment.
+##### Run as binary:
+Go into the bin directory. You can find pre-compiled builds for linux and windows for x64 directly.
+You don't need to install any dependencies for running these.
+If you want to compile it yourself, you need to get the dependencies and PyInstaller.
+Simply run the build.py with the python binary that has the dependencies and PyInstaller installed.
+You will find your binary in the build folder.
 
 ### Usage:
-Run it as a module from anywhere:
+Run it as a module from anywhere with python:
 ```bash
-python -m intarnapvalue <arguments>
+python3 -m intarnapvalue <arguments>
 ```
+Or use as a compiled binary:
+```bash
+./IntaRNApvalue <arguments>
+```
+
 Or import it and use it from within other python code:
 ```python
 from intarnapvalue.intarna_pvalue import IntaRNApvalue
