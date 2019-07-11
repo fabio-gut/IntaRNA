@@ -7,6 +7,7 @@ from subprocess import PIPE, Popen, run
 import random
 import os
 import argparse
+import sys
 from typing import List, Tuple
 import numpy as np
 from scipy.integrate import quad as integ
@@ -37,11 +38,11 @@ class IntaRNApvalue:
         scores, non_interactions = self.get_scores()
         if self.output == 'scores':  # output scores and exit the process
             print('\n'.join(iter([str(x) for x in scores])))
-            exit(0)
+            sys.exit(0)
 
         if not self.original_score:  # exit if given seq has no interaction and not scores output only mode
             print('The query/target combination you specified has no favorable interaction')
-            exit(1)
+            sys.exit(1)
 
         pvalue = 0.0
         if self.dist == 'gauss':
@@ -68,7 +69,7 @@ class IntaRNApvalue:
                 return os.path.join(dir_path, bin_name)
 
         print('Error: Cannot find IntaRNA binary executable, please add it to your PATH')
-        exit(1)
+        sys.exit(1)
 
     def process_cmd_args(self, test_args=None) -> None:
         """Processes all commandline args
@@ -115,7 +116,7 @@ class IntaRNApvalue:
         args.target = args.target.upper()
         if False in [n in allowed for n in args.query] or False in [n in allowed for n in args.target]:
             print('A sequence you specified contains illegal characters, allowed: G, A, C, U')
-            exit(1)
+            sys.exit(1)
 
         self.shuffle_query = True if args.sm in ['b', 'q'] else False
         self.shuffle_target = True if args.sm in ['b', 't'] else False
