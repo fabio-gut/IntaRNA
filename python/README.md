@@ -8,31 +8,41 @@ It then calculates the IntaRNA interaction scores for these newly generated sequ
 This pvalue is a score for the likelihood that a sequence with a better interaction score than the original ones can randomly occur.
 It can thus be used as a measurement for how good an interaction between two sequences is.
 
-### Dependencies:
+##Dependencies:
 - IntaRNA
-##### And if you want to run it with python or compile it yourself:
+#####And if you want to run it with python or compile it yourself:
 - Python 3
 - numpy
 - scipy
 
-### Installation:
-You can either run this tool directly with python or run it as a compiled binary.
+##Installation:
+You can either run this tool directly with python, install it with setuptools or run it as a compiled binary.
 ##### Run with python directly:
-Clone this repo and run:
+You don't have to install it, if you just plan on running it from a certain directory.
+Simply copy the "intarnapvalue" folder where you want to run it from.
+You have to get the dependencies yourself in this case.
+
+To use the tool from anywhere however, you need to install it as a python module.
+All dependencies (except IntaRNA) will be installed automatically.
+This way it can also be installed in a virtual environment.
 ```bash
 python setup.py install
 ```
-All dependencies (except IntaRNA) will be installed automatically.
-This way it can also be installed in a virtual environment.
-##### Run as binary:
+
+#####Run as binary:
 Go into the bin directory. You can find pre-compiled builds for linux and windows for x64 directly.
 You don't need to install any dependencies for running these.
 If you want to compile it yourself, you need to get the dependencies and PyInstaller.
 Simply run the build.py with the python binary that has the dependencies and PyInstaller installed.
 You will find your binary in the build folder.
 
-### Usage:
-Run it as a module from anywhere with python:
+##Usage:
+Run it as a module without installing (you need to be in the parent dir of intarnapvalue):
+```bash
+python3 -m intarnapvalue <arguments>
+```
+
+Run it as a module from anywhere with python (need to run setup.py first, see [Installation](#installation)):
 ```bash
 python3 -m intarnapvalue <arguments>
 ```
@@ -47,7 +57,7 @@ from intarnapvalue.intarna_pvalue import IntaRNApvalue
 IntaRNApvalue(['--flag1', 'arg1'])
 ```
 
-### Arguments:
+##Arguments:
 
 | Flag               | Value                | Default | Description          |
 | ------------------ |:-------------------- | :------ | -------------------- |
