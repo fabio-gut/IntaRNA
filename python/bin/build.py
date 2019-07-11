@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# Copyright 2019
+# Author: Fabio Gutmann <https://github.com/fabio-gut>
+
 import os
 import sys
 import subprocess
