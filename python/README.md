@@ -43,11 +43,11 @@ python3 -m intarnapvalue <arguments>
 ```
 
 Run it as a module from anywhere with python (need to run setup.py first, see [Installation](#installation)):
-```sh
+```shell
 python3 -m intarnapvalue <arguments>
 ```
 Or use as a compiled binary:
-```sh
+```console
 ./IntaRNApvalue <arguments>
 ```
 
