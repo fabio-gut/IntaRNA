@@ -25,7 +25,7 @@ You have to get the dependencies yourself in this case.
 To use the tool from anywhere however, you need to install it as a python module.
 All dependencies (except IntaRNA) will be installed automatically.
 This way it can also be installed in a virtual environment.
-```sh
+```console
 python setup.py install
 ```
 
@@ -38,12 +38,12 @@ You will find your binary in the build folder.
 
 ## Usage:
 Run it as a module without installing (you need to be in the parent dir of intarnapvalue):
-```sh
+```console
 python3 -m intarnapvalue <arguments>
 ```
 
 Run it as a module from anywhere with python (need to run setup.py first, see [Installation](#installation)):
-```shell
+```console
 python3 -m intarnapvalue <arguments>
 ```
 Or use as a compiled binary:
