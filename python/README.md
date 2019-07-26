@@ -70,3 +70,10 @@ IntaRNApvalue(['--flag1', 'arg1'])
 | -o, --output       | {pvalue, scores}     | pvalue  | If set to pvalue, will only output pvalue. If set to scores, will output every score from randomly generated sequences, but no pvalue. |
 | --threads          | 0 - {max threads}    | 0       | How many threads IntaRNA uses for score calculation. If set to 0 it will use all available threads. |
 | --seed             | any                  | None    | The seed used for generating random sequences. |
+
+## Example
+An example use-case could look like this:
+```console
+$ python3 -m intarnapvalue --query GCUGAAAAACAUAACCCAUAAAAUGCUAGCUGUACCAGGAACCA --target GGUUUCUUCGCCUCUGCGUUCACCAAAGUGUUCACCC --scores 10000 --shuffle-mode b --threads 0
+pvalue: 0.2421277140114205
+```
