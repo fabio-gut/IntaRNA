@@ -29,32 +29,32 @@ class IntaRNApvalue:
         self.dist = ''
         self.output = ''
         self.process_cmd_args(test_args)
-        self.original_score = self.get_original_score()
         if not test_args:
             self.main()
 
     def main(self) -> None:
         """The main function"""
-        scores, non_interactions = self.get_scores()
         if self.output == 'scores':  # output scores and exit the process
+            scores, non_interactions = self.get_scores()
             print('\n'.join(iter([str(x) for x in scores])))
             sys.exit(0)
 
-        if not self.original_score:  # exit if given seq has no interaction and not scores output only mode
+        original_score = self.get_single_score(self.query, self.target)
+        if not original_score:  # exit if given seq has no interaction and not scores output only mode
             print('The query/target combination you specified has no favorable interaction')
             sys.exit(1)
 
+        scores, non_interactions = self.get_scores()
         pvalue = 0.0
         if self.dist == 'gauss':
-            pvalue = self.calculate_pvalue_gauss(self.original_score, scores)
+            pvalue = self.calculate_pvalue_gauss(original_score, scores)
         elif self.dist == 'none':
-            pvalue = self.calculate_pvalue_empirical(self.original_score, scores)
+            pvalue = self.calculate_pvalue_empirical(original_score, scores)
         elif self.dist == 'gumbel':
-            pvalue = self.calculate_pvalue_gumbel(self.original_score, scores)
+            pvalue = self.calculate_pvalue_gumbel(original_score, scores)
         elif self.dist == 'gev':
-            pvalue = self.calculate_pvalue_gev(self.original_score, scores)
-
-        print('pvalue: {}'.format(pvalue))
+            pvalue = self.calculate_pvalue_gev(original_score, scores)
+        print(pvalue)
 
     @staticmethod
     def find_binary() -> str:
@@ -72,7 +72,7 @@ class IntaRNApvalue:
         sys.exit(1)
 
     def process_cmd_args(self, test_args=None) -> None:
-        """Processes all commandline args
+        """Processes all commandline args and sets them as instance variables.
 
         >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '-n', '10', '-m', 'b', '-d', 'gauss',
         ... '--threads', '3'])
@@ -92,6 +92,16 @@ class IntaRNApvalue:
         'gauss'
         >>> i.output
         'pvalue'
+        >>> i = IntaRNApvalue(['-q', 'Z', '-t', 'UUUAUCGUU', '-n', '10', '-m', 'b', '--threads', '3'])
+        Traceback (most recent call last):
+        ...
+        SystemExit: 1
+        >>> open('test.fasta', 'w').write('>someseq\\nGACU')
+        13
+        >>> i = IntaRNApvalue(['-q', 'test.fasta', '-t', 'UUUAUCGUU', '-n', '10', '-m', 'b', '--threads', '3'])
+        >>> i.query
+        'GACU'
+        >>> os.remove('test.fasta')
         """
         parser = argparse.ArgumentParser(description='Calculates p-values to IntaRNA scores.')
         parser.add_argument('-q', '--query', dest='query', type=str, help='Query sequence', required=True)
@@ -111,11 +121,15 @@ class IntaRNApvalue:
 
         args = parser.parse_args(test_args)
 
-        allowed = ['G', 'A', 'C', 'U']
-        args.query = args.query.upper()
-        args.target = args.target.upper()
-        if False in [n in allowed for n in args.query] or False in [n in allowed for n in args.target]:
-            print('A sequence you specified contains illegal characters, allowed: G, A, C, U')
+        allowed = ['G', 'A', 'C', 'U', 'T']
+        if os.path.exists(args.query):
+            args.query = self.read_fasta_file(args.query)
+
+        if os.path.exists(args.target):
+            args.target = self.read_fasta_file(args.target)
+
+        if False in [n in allowed for n in args.query.upper()] or False in [n in allowed for n in args.target.upper()]:
+            print('A sequence you specified contains illegal characters, allowed: G, A, C, U (T)')
             sys.exit(1)
 
         self.shuffle_query = True if args.sm in ['b', 'q'] else False
@@ -124,6 +138,36 @@ class IntaRNApvalue:
             self.__setattr__(key, value)
 
         random.seed(a=args.seed)
+
+    @staticmethod
+    def read_fasta_file(filename: str) -> str:
+        """Reads a FASTA file and returns the sequence. Exits the program if something goes wrong.
+
+        >>> with open('test.fasta', 'w') as f:
+        ...     f.write('>somename\\nGACUGGAGUGC')
+        21
+        >>> IntaRNApvalue.read_fasta_file('test.fasta')
+        'GACUGGAGUGC'
+        >>> IntaRNApvalue.read_fasta_file('test2.fasta')
+        Traceback (most recent call last):
+        ...
+        SystemExit: 1
+        >>> os.remove('test.fasta')
+        """
+        try:
+            with open(filename) as f:
+                data = f.read().split('\n')
+                if not data[0].startswith('>'):
+                    print('Error: {} is not in FASTA format!'.format(filename))
+                    sys.exit(1)
+                f.close()
+                return data[1].upper().replace('T', 'U')
+        except FileNotFoundError as e:  # In theory this can never happen, lets prevent it anyways
+            print(e)
+            sys.exit(1)
+        except IndexError:
+            print('Error: {} is not in FASTA format!'.format(filename))
+            sys.exit(1)
 
     @staticmethod
     def shuffle_sequence(seq: str, n: int) -> List[str]:
@@ -172,6 +216,8 @@ class IntaRNApvalue:
             p = Popen([self.bin, '-q', query, '-t', target, '--outMode=C', '--outCsvCols=E', '--threads', self.threads],
                       stdout=PIPE, stdin=PIPE, universal_newlines=True)
             stdout, stderr = p.communicate(input=shuffles)  # send shuffles as STDIN
+            if p.returncode:  # If IntaRNA exits with a returncode != 0, skip this iteration
+                continue
             stdout = stdout.split('\n')  # split on newline
             del stdout[0], stdout[-1]  # remove first element aka 'E' and trailing newline element
             scores.extend(stdout)  # add elements to scores
@@ -181,12 +227,11 @@ class IntaRNApvalue:
         # return list with all elements as float and amount of non-interactions
         return [float(x) for x in scores], non_interactions
 
-    def get_original_score(self) -> float:
+    def get_single_score(self, query, target) -> float:
         """Gets an IntaRNA score to a single query/target combination"""
-        o = run('{} -q {} -t {} --outMode=C --outCsvCols=E --threads {}'.format(self.bin, self.query, self.target,
-                                                                                self.threads),
+        o = run('{} -q {} -t {} --outMode=C --outCsvCols=E --threads {}'.format(self.bin, query, target, self.threads),
                 stdout=PIPE, stdin=PIPE, shell=True, universal_newlines=True).stdout
-        if o.startswith('E') and o != 'E\n':
+        if o.startswith('E') and o != 'E\n':  # Check that we got a result
             return float(o.split('\n')[1])
         else:
             return 0  # no interaction
@@ -195,7 +240,7 @@ class IntaRNApvalue:
     def calculate_pvalue_empirical(original_score, scores: list = None) -> float:
         """Calculates a p-value to a target/query combination empirical with a given amount of shuffle iterations
 
-        >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--scores', '10', '-sm', 'b', '--threads', '3'])
+        >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--scores', '10', '-m', 'b', '--threads', '3'])
         >>> i.calculate_pvalue_empirical(-10.0, [-1.235, -1.435645, -6.234234, -12.999, -15.23, -6.98, -6.23, -2.78])
         0.25
         """
@@ -206,7 +251,7 @@ class IntaRNApvalue:
         """Calculates a p-value to a target/query combination by int. with a given amount of shuffle iterations by
         fitting a gaussian distribution and integrating from -inf to the original score
 
-        >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--scores', '10', '-sm', 'b', '--threads', '3'])
+        >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--scores', '10', '-m', 'b', '--threads', '3'])
         >>> i.calculate_pvalue_gauss(-10.0, [-1.235, -1.435645, -6.234234, -12.999, -15.23, -6.98, -6.23, -2.78])
         0.2429106747265256
         """
@@ -221,7 +266,7 @@ class IntaRNApvalue:
         """Calculates a p-value to a target/query combination by int. with a given amount of shuffle iterations by
         fitting a gumbel distribution and integrating from -inf to the original score
 
-        >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--scores', '10', '-sm', 'b', '--threads', '3'])
+        >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--scores', '10', '-m', 'b', '--threads', '3'])
         >>> i.calculate_pvalue_gumbel(-10.0, [-1.235, -1.435645, -6.234234, -12.999, -15.23, -6.98, -6.23, -2.78])
         0.19721934073203196
         """
@@ -236,7 +281,7 @@ class IntaRNApvalue:
         """Calculates a p-value to a target/query combination by int. with a given amount of shuffle iterations by
         fitting a generalized extreme value distribution and integrating from -inf to the original score
 
-        >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--scores', '10', '-sm', 'b', '--threads', '3'])
+        >>> i = IntaRNApvalue(['-q', 'AGGAUG', '-t', 'UUUAUCGUU', '--scores', '10', '-m', 'b', '--threads', '3'])
         >>> i.calculate_pvalue_gev(-10.0, [-1.235, -1.435645, -6.234234, -12.999, -15.23, -6.98, -6.23, -2.78])
         0.17611816922560236
         """
