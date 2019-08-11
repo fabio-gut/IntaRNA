@@ -31,7 +31,7 @@ python setup.py install
 
 ##### Run as binary:
 Go into the bin directory. You can find pre-compiled builds for linux and windows for x64 directly.
-You don't need to install any dependencies for running these.
+You don't need to install any dependencies for running these, on Windows however you will need Microsoft Visual C++ Redistributable.
 If you want to compile it yourself, you need to get the dependencies and PyInstaller.
 I had problems with numpy 1.17.0, so I had to use 1.16.4.
 Simply run the build.py with the python binary that has the dependencies and PyInstaller installed.
